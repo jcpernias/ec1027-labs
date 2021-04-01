@@ -1,0 +1,123 @@
+---
+title: "Rendimiento académico de los estudiantes universitarios"
+author: "José C. Pernías"
+date: "3/28/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Paquetes R y datos
+
+Los datos están disponibles en el paquete `ec1027`:
+```{r}
+library(ec1027)
+
+data(gpa1)
+```
+
+En este laboratorio no necesitamos cargar paquetes adicionales.
+
+# Apartado a)
+
+Estimación por MCO
+```{r}
+mco <- lm(colGPA ~ hsGPA + ACT + skipped + PC, data = gpa1)
+coef_table(mco)
+```
+
+# Apartado b)
+
+Contraste de White
+```{r}
+white_test(mco)
+```
+
+Calculamos errores típicos robustos a heteroscedasticidad:
+```{r}
+coef_table(mco, vce = "HC")
+```
+
+# Apartado c)
+
+En este apartado suponemos que la varianza condicinal es función de una de las variables explicativas:
+$$
+E(u^2|\boldsymbol{x}) = \sigma^2 h_i = \sigma^2 hsGPA_i
+$$
+
+Podemos obtener MCP "a mano", dividiendo todas las variables por la raíz cuadrada de `hsGPA`. Creamos las variables transformadas:
+```{r}
+gpa1 <- within(gpa1, {
+  sqrt_hsGPA <- sqrt(hsGPA)
+  colGPA_tr  <-  colGPA / sqrt_hsGPA
+  one_tr     <-       1 / sqrt_hsGPA
+  hsGPA_tr   <-   hsGPA / sqrt_hsGPA
+  ACT_tr     <-     ACT / sqrt_hsGPA
+  skipped_tr <- skipped / sqrt_hsGPA
+  PC_tr      <-      PC / sqrt_hsGPA
+})
+```
+
+Es fácil olvidarse en el paso anterior de transformar la constante: `one_tr` es la inversa de la raíz cuadrada de `hsGPA`.
+
+Ahora estimamos el modelo transformado por MCO. Tenemos que tener en cuenta que nuestro modelo transformado no tiene término constante. Para indicarlo añadimos `- 1` en la fórmula del modelo transformado:
+```{r}
+mcp <- lm(colGPA_tr ~ one_tr + hsGPA_tr + ACT_tr + skipped_tr + PC_tr - 1, data = gpa1)
+coef_table(mcp)
+```
+
+Podemos evitar mucho trabajo si usamos el parámetro `weights`de `lm`. Escribimos la fórmula del modelo principal y tenemos que introducir los pesos, que son la inversa de la función de dispersion $h_i$. En nuestro caso:
+```{r}
+mcp2 <- lm(colGPA ~ hsGPA + ACT + skipped + PC, weights = 1 / hsGPA, data = gpa1)
+coef_table(mcp2)
+```
+
+# Apartado d)
+
+Para estimar la función de dispersión, estimamos una regresión auxiliar del logaritmo de los residuos al cuadrado con respecto de `hsGPA`y `ACT`.
+```{r}
+uhat <- resid(mco)
+sq_uhat <- uhat^2
+log_sq_uhat <- log(sq_uhat)
+aux <- lm(log_sq_uhat ~ hsGPA + ACT, data = gpa1)
+```
+
+La exponencial de las predicciones de la regresión auxiliar son nuestras estimaciones de $h_i$:
+```{r}
+log_hhat <- fitted(aux)
+hhat <- exp(log_hhat)
+```
+
+Finalmente, usamos como ponderaciones la inversa de $\hat{h}_i$:
+```{r}
+mcgf <- lm(colGPA ~ hsGPA + ACT + skipped + PC, weights = 1 / hhat, data = gpa1)
+coef_table(mcgf)
+```
+
+# Apartado e)
+
+En primer lugar, obtenemos las predicciones de la estimación original por MCO:
+```{r}
+yhat <- fitted(mco)
+sq_yhat <- yhat^2
+```
+
+La nueva regresión auxiliar sería:
+```{r}
+aux2 <- lm(log_sq_uhat ~ yhat + sq_yhat, data = gpa1) 
+```
+
+Estimamos $h_i$:
+```{r}
+hhat2 <- exp(fitted(aux2))
+```
+
+Estimación por MCGF:
+```{r}
+mcgf2 <- lm(colGPA ~ hsGPA + ACT + skipped + PC, weights = 1 / hhat2, data = gpa1)
+coef_table(mcgf2)
+```
+
+

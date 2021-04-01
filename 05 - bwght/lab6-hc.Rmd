@@ -1,0 +1,152 @@
+---
+title: "El efecto del tabaco sobre el peso de los recién nacidos"
+author: "José C. Pernías"
+date: "3/24/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Paquetes de R
+
+Usamos `ec1027` y `sandwich`:
+```{r}
+library(ec1027)
+library(sandwich)
+```
+
+
+# Datos
+
+Cargamos la base de datos `bwght` y transformamos variables:
+```{r}
+data("bwght")
+
+# Logaritmo de la renta familiar
+bwght$lfaminc <- log(bwght$faminc)
+
+# Variable ficticia: 1 si es el primer hijo
+bwght$first <- bwght$parity == 1
+
+# Variable ficticia: 1 si es la madre fumó durante el embarazo
+bwght$smokes <- bwght$cigs > 0
+```
+
+Para evitar escribir siempre el nombre de la base de datos, podemos usar la función `within`:
+```{r}
+bwght <- within(bwght, {
+  # Logaritmo de la renta familiar
+  lfaminc <- log(faminc)
+
+  # Variable ficticia: 1 si es el primer hijo
+  first <- parity == 1
+  
+  # Variable ficticia: 1 si es la madre fumó durante el embarazo
+  smokes <- cigs > 0
+})
+```
+
+
+# Estimación y contrastes de hetroscedasticidad
+
+## Modelo 1
+
+En primer lugar consideramos el modelo:
+$$
+bwght = \beta_0 + \beta_1 male + \beta_2 parity + \beta_3 faminc + \beta_4 cigs + u
+$$
+
+## Estimación 
+
+Estimación por MCO:
+```{r}
+mod1 <- lm(bwght ~ male + parity + faminc + cigs, data = bwght)
+coef_table(mod1, vce = vcovHC)
+```
+
+## Contraste RESET
+
+Calculamos los valores ajustados y sus cuadrados a partir de la estimaciones del modelo 1:
+```{r}
+bwght <- within(bwght, {
+  yhat1 <- fitted(mod1)
+  sq_yhat1 <- yhat1^2
+})
+```
+
+Añadimos el cuadrado de las predicciones al modelo original y contrastamos su significación con el contraste $t$.
+```{r}
+coef_table(update(mod1, . ~ . + sq_yhat1), vce = vcovHC)
+```
+
+El contraste RESET no detecta problemas en la forma funcional de este modelo.
+
+# Modelo 2
+
+Ahora planteamos el modelo:
+$$
+bwght = \alpha_0 + \alpha_1 male + \alpha_2 first + \alpha_3 lfaminc + \alpha_4 smokes + v
+$$
+
+## Estimación 
+
+Estimación por MCO
+```{r}
+mod2 <- lm(bwght ~ male + first + lfaminc + smokes, data = bwght)
+coef_table(mod2, vce = vcovHC)
+```
+
+Calculamos los valores ajustados y sus cuadrados a partir de la estimaciones del modelo 2:
+```{r}
+bwght <- within(bwght, {
+  yhat2 <- fitted(mod2)
+  sq_yhat2 <- yhat2^2
+})
+```
+
+## Contraste RESET
+
+```{r}
+coef_table(update(mod2, . ~ . + sq_yhat2), vce = vcovHC)
+```
+
+De acuerdo con el contraste RESET hay evidencia de mala especificación funcional del modelo 2.
+
+# Contrastes de modelos no anidados
+
+## Mizon y Richard (_encompassing tests_)
+
+```{r}
+enc <- update(mod1, . ~ . + first + lfaminc + smokes)
+coef_table(enc, vce = vcovHC)
+```
+
+Contraste usando el modelo 1 como hipótesis nula:
+```{r}
+drop_test(enc, ~ first + lfaminc + smokes, vce = vcovHC)
+```
+
+Contraste usando el modelo 2 como hipótesis nula:
+```{r}
+drop_test(enc, ~ parity + faminc + cigs, vce = vcovHC)
+```
+
+En conclusión, ninguno de los dos modelos puede rechazarse en favor del otro.
+
+## Contrastes de Davidson-McKinnon
+
+Ampliamos el modelo 1 con las predicciones del modelo 2:
+```{r}
+coef_table(update(mod1, . ~ . + yhat2), vce = vcovHC)
+```
+
+De acuerdo con este contraste rechazaríamos el modelo 1 en favor del modelo 2, para un nivel de significación del 5%.
+
+Ahora ampliamos el modelo 2 con las predicciones del modelo 1:
+```{r}
+coef_table(update(mod2, . ~ . + yhat1), vce = vcovHC)
+```
+
+Este contraste no rechazaría al 5% el modelo 2 (aunque sí se rechazaría con un nivel de significación del 10%). En base a los contrastes de Davidson-MacKinnon el modelo 2 parece una mejor alternativa.

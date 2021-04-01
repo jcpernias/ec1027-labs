@@ -1,0 +1,82 @@
+---
+title: "Participación de las mujeres en la fuerza de trabajo"
+author: "José C. Pernías"
+date: "3/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Paquetes R
+
+Los datos están en un archivo csv. El paquete `readr` contiene funciones para leer ese tipo de archivos.
+```{r}
+library(readr)
+```
+
+# Datos
+
+Leemos los datos. 
+```{r}
+db <- read_csv("data4-5.csv")
+```
+
+# Apartado a)
+
+Estimación por MCO del modelo:
+$$
+  wlfp = \beta_{0} + \beta_{1} yf + \beta_{2} ym + \beta_{3} educ +
+  \beta_{4} ue + \beta_{5} mr + \beta_{6} dr + u
+$$
+```{r}
+frml1 <- wlfp ~ yf + ym + educ + ue + mr + dr
+mod1 <- lm(frml1, data = db)
+summary(mod1)
+```
+Las variables de ingresos son significativas. El signo positivo de `yf` indica que el aumento de los ingresos medianos de las mujeres incentiva una mayor participación en la fuerza laboral. El signo negativo de `ym` implicaría una reducción de la participación de las mujeres en el mercado de trabajo cuando los ingresos de los hombres aumentan _ceteris paribus_. Por otro lado, la participación de las mujeres es mayor en aquellos estados en que hay un mayor porcentaje de mujeres con estudios secundarios o superiores y la tasa de desempleo afecta negativamente a la incorporación de la mujer al mercado de trabajo. Por último, las variables que reflejan el estado civil de las mujeres, `mr` y `dr`, no son significativas individualmente.
+
+# Apartado b)
+
+En la tabla anterior el contraste F de significación conjunta toma el valor 19.26, rechazando la hipótesis nula de que todas las pendientes son iguales a 0 a los niveles usuales de significación. 
+
+# Apartado c)
+
+En primer lugar utilizaremos el contraste F, por lo que estimamos el modelo restringido:
+$$
+  wlfp = \beta_{0} + \beta_{1} yf + \beta_{2} ym + \beta_{3} educ +
+  \beta_{4} ue + v
+$$
+
+```{r}
+mod2 <- update(mod1, . ~ . - mr - dr)
+summary(mod2)
+```
+
+Para realizar el contraste utilizamos la función `anova`:
+```{r}
+anova(mod2, mod1)
+```
+
+La hipótesis nula $\beta_5 = \beta_6 = 0$ no se rechazaría a los niveles usuales de significación.
+
+Para realizar el contraste LM sólo necesitamos la estimación del modelo restringido, `mod2`. El contraste se basa en la regresión auxiliar de los residuos del modelo restringido sobre todas las variables explicativas de `mod2` y las variables cuya significación conjunta queremos contrastar:
+```{r}
+db$uhat2 <- resid(mod2)
+aux <- update(mod2, uhat2 ~ . + mr + dr)
+```
+
+Ahora calculamos el estadístico LM multiplicando el número de observaciones por el $R^2$ de la regresión auxiliar:
+```{r}
+N <- nobs(aux)
+Rsq <- summary(aux)$r.squared
+LM <- N * Rsq
+```
+El valor del estadístico es LM = `r LM`. Calculamos el valor-$p$ usando la distribución de una $\chi^2$ con 2 grados de libertad:
+```{r}
+LM_pv <- pchisq(LM, 2, lower.tail = FALSE)
+LM_pv
+```
+Por tanto no rechazamos la hipótesis nula $\beta_5 = \beta_6 = 0$.
+

@@ -1,0 +1,88 @@
+---
+title: "vote1"
+author: "José C. Pernías"
+date: "3/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Datos
+
+Cargamos el paquete `readxl` para leer hojas de cálculo Excel y el paquete 
+`ggplot2` para realizar gráficos:
+```{r}
+library(readxl)
+library(ggplot2)
+```
+
+Leemos las variables del archivo vote1.xlsx:
+```{r}
+vote1 <- read_xlsx("vote1.xlsx")
+```
+
+# Regresión inicial
+
+Usamos `expendA` para explicar el porcentaje de votos obtenidos por A:
+$$
+ voteA = \beta_0 + \beta_1 expendA + u
+$$
+```{r}
+mod1 <- lm(voteA ~ expendA, data = vote1)
+summary(mod1)
+```
+La estimación del parámetro $\beta_1$ indica que por cada 1000$ adicionales de 
+gasto el porcentaje de votos para el candidato A aumentará en 0.024 puntos 
+porcentuales. 
+
+Calculamos los residuos y los valores ajustados de la variable dependiente y 
+los almacenamos en la base de datos: 
+```{r}
+vote1$yhat <- fitted(mod1)
+vote1$uhat <- resid(mod1)
+
+head(vote1)
+```
+
+# Gastos del rival 
+
+Gráfico de los residuos con respecto a la variable explicativa:
+```{r}
+qplot(x = expendA, y = uhat, data = vote1)
+```
+
+Gráfico de los residuos con respecto de los gastos del candidato B:
+```{r}
+qplot(x = expendB, y = uhat, data = vote1)
+```
+
+Correlación entre `expendA` y `expendB`:
+```{r}
+with(vote1,  cor(expendA, expendB))
+```
+
+Ampliamos el modelo:
+```{r}
+mod2 <- update(mod1, . ~ . + expendB)
+summary(mod2)
+```
+
+El ajuste ha mejorado mucho, pasando el R$^2$ de 0.1561 a 0.5299.
+
+
+# Pertenencia al partido demócrata
+
+Finalmente añadimos la variable `democA`:
+
+```{r}
+mod3 <- update(mod2, . ~ . + democA)
+summary(mod3)
+```
+
+El valor de $\hat{\beta}_3$ indica que la afiliación al Partido Demócrata daba
+una ventaja de algo más de 4 puntos porcentuales, una vez tenidos en cuenta los
+efectos de los gastos electorales.
+
+

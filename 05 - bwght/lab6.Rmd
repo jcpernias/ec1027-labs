@@ -1,0 +1,187 @@
+---
+title: "El efecto del tabaco sobre el peso de los recién nacidos"
+author: "EC1027 --- Econometría I"
+date: "Curso 2020-2021"
+output: 
+  html_document:
+    number_sections: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+La base de datos `bwght` contiene información sobre diversas características de  recién nacidos y sus familias durante el año 1988 en Estados Unidos. En este laboratorio usaremos:
+
+- `bwght`: El peso de los recién nacidos, en [onzas](https://www.metric-conversions.org/es/peso/onzas-a-gramos.htm).
+- `male`: 1 si el recién nacido es varón, 0 si es mujer.
+- `faminc`: La renta familiar, en miles de dólares.
+- `parity`: 1 si es el primer hijo de su madre, 2 si es el segundo, etc.
+- `cigs`: número de cigarrillos que la madre fumaba diariamente durante el embarazo.
+
+Con objeto de estudiar el efecto que tiene el consumo de tabaco durante el embarazo se han propuesto dos modelos alternativos:
+
+- **Modelo 1**:
+  $$
+  bwght = \beta_0 + \beta_1 male + \beta_2 faminc + \beta_3 parity + \beta_4 cigs + u
+  $$
+- **Modelo 2**:
+  $$
+  bwght = \alpha_0 + \alpha_1 male + \alpha_2 faminc + \alpha_3 first + 
+  \alpha_4 cigs\_le10 + \alpha_5 cigs\_gt10 + v
+  $$
+  donde también se usan las siguientes variables ficticias:
+
+  + `first`: toma el valor 1 si la madre no había tenido hijos anteriormente y 0 en caso contrario.
+  + `cigs_le10`: toma valor 1 si la madre fumó ente 1 y 10 cigarrillos diarios durante el embarazo.
+  + `cigs_gt10`: toma valor 1 si la madre fumó más de 10 cigarrillos diarios durante el embarazo. 
+
+Responda a las siguientes preguntas:
+
+1. ¿Cuál es la interpretación de los parámetros del **Modelo 1**? ¿Y la de los parámetros del **Modelo 2**? ¿Cuál es el signo esperado de esos parámetros?
+
+2. Determine en cuantos casos las madres fumaron durante el embarazo. ¿Cuál es la media de la variable `cigs` si sólo consideramos observaciones en las que las madres fumaron durante el embarazo? 
+
+# Paquetes de R y datos
+
+Usamos `ec1027`.
+```{r}
+library(ec1027)
+```
+
+Cargamos la base de datos `bwght` y transformamos variables:
+```{r}
+data(bwght)
+
+# 1 si es el primer hijo de la madre
+bwght$first <- bwght$parity == 1
+
+# 1 si es la madre fumó entre 1 y 10 cigarrillos al día durante el embarazo
+bwght$cigs_le10 <- bwght$cigs > 0 & bwght$cigs <= 10
+
+#1 si es la madre fumó más de 10 cigarrillos diarios durante el embarazo
+bwght$cigs_gt10 <- bwght$cigs > 10
+```
+
+Para evitar escribir siempre el nombre de la base de datos, podemos usar la función `within`:
+```{r}
+bwght <- within(bwght, {
+  # 1 si es el primer hijo de la madre
+  first <- parity == 1
+  
+  # 1 si es la madre fumó entre 1 y 10 cigarrillos al día durante el embarazo
+  cigs_le10 <- cigs > 0 & cigs <= 10
+  
+  #1 si es la madre fumó más de 10 cigarrillos diarios durante el embarazo
+  cigs_gt10 <- cigs > 10
+})
+```
+
+
+# Estimación y contrastes de hetroscedasticidad
+
+## Modelo 1
+
+En primer lugar consideramos el modelo:
+$$
+bwght = \beta_0 + \beta_1 male + \beta_2 faminc + \beta_3 parity + \beta_4 cigs + u
+$$
+Estimación por MCO:
+```{r}
+mod1 <- lm(bwght ~ male + parity + faminc + cigs, data = bwght)
+coef_table(mod1)
+```
+
+Contraste de heteroscedasticidad:
+```{r}
+het_test(mod1)
+```
+
+No se rechaza la hipótesis nula de homoscedasticidad.
+
+## Modelo 2
+
+Ahora planteamos el modelo:
+$$
+bwght = \alpha_0 + \alpha_1 male + \alpha_2 faminc + \alpha_3 first + 
+\alpha_4 cigs\_le10 + \alpha_5 cigs\_gt10 + v
+$$
+
+Estimación por MCO
+```{r}
+mod2 <- lm(bwght ~ male + faminc + first + cigs_le10 + cigs_gt10, data = bwght)
+coef_table(mod2)
+```
+
+Contraste de heteroscedasticidad:
+```{r}
+het_test(mod2)
+```
+No se rechaza la hipótesis nula de homoscedasticidad.
+
+# Contraste RESET
+
+Calculamos los valores ajustados y sus cuadrados a partir de la estimaciones del modelo 1:
+```{r}
+bwght <- within(bwght, {
+  yhat1 <- fitted(mod1)
+  sq_yhat1 <- yhat1^2
+  yhat2 <- fitted(mod2)
+  sq_yhat2 <- yhat2^2
+})
+```
+
+Añadimos el cuadrado de las predicciones al modelo original y contrastamos su significación con el contraste $t$.
+```{r}
+reset1 <- update(mod1, . ~ . + sq_yhat1)
+coef_table(reset1)
+```
+
+El contraste RESET no detecta problemas en la forma funcional del modelo 1.
+
+Ahora estimamos la regresión auxiliar para el modelo 2:
+```{r}
+reset2 <- update(mod2, . ~ . + sq_yhat2)
+coef_table(reset2)
+```
+
+De acuerdo con el contraste RESET tampoco hay evidencia de mala especificación funcional en el modelo 2.
+
+# Contrastes de modelos no anidados
+
+## Mizon y Richard (_encompassing tests_)
+
+```{r}
+enc <- update(mod1, . ~ . + first + cigs_le10 + cigs_gt10)
+coef_table(enc)
+```
+
+Contraste usando el modelo 1 como hipótesis nula:
+```{r}
+drop_test(enc, ~ first + cigs_le10 + cigs_gt10)
+```
+
+Contraste usando el modelo 2 como hipótesis nula:
+```{r}
+drop_test(enc, ~ parity + cigs)
+```
+
+En conclusión, ninguno de los dos modelos puede rechazarse en favor del otro.
+
+## Contrastes de Davidson-MacKinnon
+
+Ampliamos el modelo 1 con las predicciones del modelo 2:
+```{r}
+j1 <- update(mod1, . ~ . + yhat2)
+coef_table(j1)
+```
+
+De acuerdo con este contraste rechazaríamos el modelo 1 para un nivel de significación del 5%.
+
+Ahora ampliamos el modelo 2 con las predicciones del modelo 1:
+```{r}
+j2 <- update(mod2, . ~ . + yhat1)
+coef_table(j2)
+```
+
+Este contraste no rechazaría al 5% el modelo 2. En base a los contrastes de Davidson-MacKinnon el modelo 2 parece una mejor alternativa.

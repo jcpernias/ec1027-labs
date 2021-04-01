@@ -1,0 +1,87 @@
+---
+title: "Lab09"
+author: "José C. Pernías"
+date: "3/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Preparación
+
+## Bibliotecas de R
+
+```{r}
+library(tidyverse)
+library(wooldridge)
+library(dynlm)
+library(texreg)
+```
+
+
+```{r}
+tr2 <- subset(traffic2, 
+              select = c(totacc, fatacc, prcfat, beltlaw, 
+                         spdlaw, wkends, unem))
+tr2 <- within(tr2, {
+  ltotacc <- log(totacc)
+})
+
+tr2 <- ts(tr2, start = c(1981, 1), end = c(1989, 12), frequency = 12)
+```
+
+```{r}
+ltotacc <- tr2[, "ltotacc"] 
+ts.plot(ltotacc)
+```
+
+
+
+```{r}
+frml_1 <- ltotacc ~ trend(ltotacc) + season(ltotacc)
+model_1 <- dynlm(frml_1, data = tr2)
+summary(model_1)
+```
+
+```{r}
+frml_2 <- update(formula(model_1), . ~ .  + wkends + unem + spdlaw + beltlaw) 
+model_2 <- dynlm(frml_2, data = as.ts(tr2))
+summary(model_2)
+```
+
+```{r}
+uhat_1 <- resid(model_1)
+frml_3 <- update(frml_2, uhat_1 ~ .)
+model_3 <- dynlm(frml_3, data = as.ts(tr2))
+summary(model_3)
+```
+
+```{r}
+screenreg(list(model_1, model_2, model_3), digits = 4)
+```
+
+
+```{r}
+mean(tr2$prcfat)
+```
+
+```{r}
+plot.ts(tr2$prcfat)
+```
+
+```{r}
+frml_4 <- update(frml_2, prcfat ~ .)
+model_4 <- dynlm(frml_4, data = as.ts(tr2))
+summary(model_4)
+```
+ 
+```{r}
+screenreg(list("Modelo 4" = model_4), digits = 4)
+```
+ 
+```{r}
+plot.ts(resid(model_4))
+```
+

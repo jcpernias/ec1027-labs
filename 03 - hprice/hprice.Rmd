@@ -1,0 +1,138 @@
+---
+title: "Precio de venta de las casas"
+author: "José C. Pernías"
+date: "3/28/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Paquetes R y datos
+
+Los datos están en el paquete `ec1027`.
+```{r}
+library(ec1027)
+
+data(hprice1)
+```
+
+En este laboratorio no necesitamos paquetes adicionales.
+
+# Apartado a)
+
+Estimación por MCO:
+```{r}
+mco <- lm(price ~ sqrft + lotsize + bdrms, data = hprice1)
+coef_table(mco)
+```
+
+Usamos ahora errores típicos robustos a heteroscedasticidad:
+```{r}
+coef_table(mco, vce = "HC")
+```
+
+Comparamos los errores típicos de MCO y robustos:
+```{r}
+se_mco <- se(mco)
+se_hc <- se(mco, vce = "HC")
+ratio <- se_hc / se_mco
+cmp <- cbind(MCO = se_mco, HC = se_hc, "HC / MCO" = ratio)
+round(cmp, 5)
+```
+
+Hay diferencias importantes en los errores típicos, especialmente en el caso de `lotsize`.
+
+# Apartado b)
+
+Residuos MCO:
+```{r}
+uhat <- resid(mco)
+```
+
+Regresión de los residuos sobre las variables explicativas:
+```{r}
+aux <- update(mco, uhat ~ .)
+coef_table(aux)
+```
+Las estimaciones de los parámetros son iguales a 0. Los residuos de MCO están incorrelacionados conlas variables explicativas por construcción.
+
+# Apartado c)
+
+Una variante usual del contraste de Breusch-Pagan se calcula a partir una regresión auxiliar de los residuos al cuadrado sobre las explicativas.
+```{r}
+sq_uhat <- uhat^2
+aux <- update(mco, sq_uhat ~ .)
+coef_table(aux)
+```
+El valor del estadístico F de significación conjunta de la regresión auxiliar rechazaría la hipótesis de homoscedasticidad a un nivel de significación del 5%. Este contraste lo podríamos haber calculado con la función `het_test`:
+```{r}
+het_test(mco)
+```
+
+# Apartado d)
+
+Contraste de White, versión $\chi^2$:
+```{r}
+white_test(mco, chisq = TRUE)
+```
+Rechazamos homoscedasticidad.
+
+# Apartado e)
+
+Guardamos las prediccones y los cuadrados de las predicciones del modelo original:
+```{r}
+yhat <- fitted(mco)
+sq_yhat <- yhat^2
+```
+
+Usamos `het_test` para que realice la regresión intermedia:
+```{r}
+het_test(mco, ~ yhat + sq_yhat)
+```
+Rechazamos homoscedasticidad.
+
+# Apartado f)
+
+Transformamos las variables:
+```{r}
+hprice1 <- within(hprice1, {
+  lprice <- log(price)
+  lsqrft <- log(sqrft)
+  llotsize <- log(lotsize)
+})
+```
+
+Estimación por MCO
+```{r}
+mco2 <- lm(lprice ~ lsqrft + llotsize + bdrms, data = hprice1)
+coef_table(mco2)
+```
+Errores típicos robustos a heteroscedasticidad:
+```{r}
+coef_table(mco2, vce = "HC")
+```
+Contraste de Breusch-Pagan:
+```{r}
+het_test(mco2)
+```
+
+
+Contraste de White
+```{r}
+white_test(mco2, chisq = TRUE)
+```
+
+Contraste de White con las predicciones y las predicciones al cuadrado:
+```{r}
+yhat <- fitted(mco2)
+sq_yhat <- yhat^2
+het_test(mco2, ~ yhat + sq_yhat)
+```
+
+Ninguno de los contrastes rechaza la hipótesis nula de homoscedasticidad.
+
+# Apartado g)
+
+En este caso los problemas de heteroscedasticidad se resuelven tomando logaritmos de las variables. Parece que la heteroscedasticidad era una manifestación de un problema de forma funcional.
