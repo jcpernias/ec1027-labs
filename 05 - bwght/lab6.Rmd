@@ -169,13 +169,15 @@ Tampoco hay evidencia de mala especificación funcional en el **Modelo 2** de ac
 
 ### Contrastes de modelos no anidados
 
-No podemos obtener el **Modelo 1** como un caso especial del **Modelo 2** que se obtiene imponiendo restricciones sobre los parámetros. Tampoco podemos obtener el **Modelo 2** como un caso especial del **Modelo 1**. Los modelos que estamos considerando *no están anidados*. En una situación como esta no podemos usar el contraste $F$ para seleccionar uno de los dos modelos.
+No podemos obtener el **Modelo 1** como un caso especial del **Modelo 2**: no hay restricciones sobre los parámetros del **Modelo 1** que produzcan un modelo equivalente al **Modelo 2**. Tampoco podemos obtener el **Modelo 2** como un caso especial del **Modelo 1**. 
+
+Dicho de otra forma, los modelos que estamos considerando *no están anidados*. En una situación como esta no podemos usar el contraste $F$ para seleccionar uno de los dos modelos.
 
 Utilizaremos dos contrastes de *modelos no anidados* para comparar el **Modelo 1** y el **Modelo 2**. Es importante recordar que para poder aplicar estos contrastes la variable dependiente en los dos modelos ha de ser exactamente la misma. En concreto, no podemos comparar un modelo donde la variable dependiente sea $y$ con otro modelo donde la variable dependiente sea $\log(y)$. 
 
-#### Mizon y Richard (_encompassing tests_)
+#### Contrastes de Mizon y Richards
 
-Mizon y Richard proponen basar el contraste en una regresión que contenga las variables explicativas de ambos modelos. En nuestro caso, añadimos al **Modelo 1** las variables `first`, `cigs_le10` y `cigs_gt10`. Este _supermodelo_ contiene como casos especiales tanto al **Modelo 1** como al **Modelo 2**. Estimaos por MCO:
+Mizon y Richards proponen contrastes de modelos no anidados basdos en una regresión que contenga las variables explicativas que aparecen en ambos modelos. En nuestro caso, añadimos al **Modelo 1** las variables `first`, `cigs_le10` y `cigs_gt10`. Este _supermodelo_ contiene como casos especiales tanto al **Modelo 1** como al **Modelo 2**. Estimamos por MCO:
 ```{r}
 enc <- update(mod1, . ~ . + first + cigs_le10 + cigs_gt10)
 coef_table(enc)
@@ -184,28 +186,34 @@ Si los parámetros de `first`, `cigs_le10` y `cigs_gt10` fuesen iguales a 0, obt
 ```{r}
 drop_test(enc, ~ first + cigs_le10 + cigs_gt10)
 ```
+De acuerdo con el contraste, no hay evidencia de que la hipótesis nula sea incorrecta. 
 
-Contraste usando el modelo 2 como hipótesis nula:
+Para contrastar la hipótesis nula de que el **Modelo 2** está correctamente especificado utilizamos el estadístico $F$ de significación conjunta de las variables `parity` y `cigs`:
 ```{r}
 drop_test(enc, ~ parity + cigs)
 ```
+El valor de este contraste tampoco supone evidencia en contra de la hipótesis nula.
 
-En conclusión, ninguno de los dos modelos puede rechazarse en favor del otro.
+En conclusión, con los contrastes de Mizon y Richards, ninguno de los dos modelos puede rechazarse en favor del otro.
 
 #### Contrastes de Davidson-MacKinnon
 
-Ampliamos el modelo 1 con las predicciones del modelo 2:
+Los contrastes de Davidson y MacKinnon también se llevan a cabo añadiendo a los modelos variables adicionales y contrastando la significación de estos regresores adicionales. En concreto, la propuesta de estos autores es añadir las predicciones del modelo rival. 
+
+Para contrastar la hipótesis nula de que el **Modelo 1** está bien especificado, añadimos las predicciones del **Modelo 2** y contrastamos su significación:
 ```{r}
 j1 <- update(mod1, . ~ . + yhat2)
 coef_table(j1)
 ```
 
-De acuerdo con este contraste rechazaríamos el modelo 1 para un nivel de significación del 5%.
+De acuerdo con este contraste rechazaríamos el **Modelo 1** a un nivel de significación del 5%.
 
-Ahora ampliamos el modelo 2 con las predicciones del modelo 1:
+Ahora contrastamos la hipótesis nula de que el **Modelo 2** está correctamente especificado:
 ```{r}
 j2 <- update(mod2, . ~ . + yhat1)
 coef_table(j2)
 ```
 
-Este contraste no rechazaría al 5% el modelo 2. En base a los contrastes de Davidson-MacKinnon el modelo 2 parece una mejor alternativa.
+En este caso, el valor del contraste no constituiría evidencia en contra del **Modelo 2** a un nivel de significación del 5%. 
+
+En base a los contrastes de Davidson-MacKinnon, el **Modelo 2** parece una mejor alternativa.
