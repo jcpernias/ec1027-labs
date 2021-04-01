@@ -3,13 +3,19 @@ title: "El efecto del tabaco sobre el peso de los recién nacidos"
 author: "EC1027 --- Econometría I"
 date: "Curso 2020-2021"
 output: 
-  html_document:
-    number_sections: false
+  html_document: 
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    highlight: pygments
+    theme: yeti
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+## Planteamiento
 
 La base de datos `bwght` contiene información sobre diversas características de  recién nacidos y sus familias durante el año 1988 en Estados Unidos. En este laboratorio usaremos:
 
@@ -42,7 +48,9 @@ Responda a las siguientes preguntas:
 
 2. Determine en cuantos casos las madres fumaron durante el embarazo. ¿Cuál es la media de la variable `cigs` si sólo consideramos observaciones en las que las madres fumaron durante el embarazo? 
 
-# Paquetes de R y datos
+## Resolución
+
+### Paquetes de R y datos
 
 Usamos `ec1027`.
 ```{r}
@@ -78,9 +86,9 @@ bwght <- within(bwght, {
 ```
 
 
-# Estimación y contrastes de hetroscedasticidad
+### Estimación y contrastes de hetroscedasticidad
 
-## Modelo 1
+#### Modelo 1
 
 En primer lugar consideramos el modelo:
 $$
@@ -99,7 +107,7 @@ het_test(mod1)
 
 No se rechaza la hipótesis nula de homoscedasticidad.
 
-## Modelo 2
+#### Modelo 2
 
 Ahora planteamos el modelo:
 $$
@@ -119,7 +127,7 @@ het_test(mod2)
 ```
 No se rechaza la hipótesis nula de homoscedasticidad.
 
-# Contraste RESET
+### Contraste RESET
 
 Calculamos los valores ajustados y sus cuadrados a partir de la estimaciones del modelo 1:
 ```{r}
@@ -147,9 +155,9 @@ coef_table(reset2)
 
 De acuerdo con el contraste RESET tampoco hay evidencia de mala especificación funcional en el modelo 2.
 
-# Contrastes de modelos no anidados
+### Contrastes de modelos no anidados
 
-## Mizon y Richard (_encompassing tests_)
+#### Mizon y Richard (_encompassing tests_)
 
 ```{r}
 enc <- update(mod1, . ~ . + first + cigs_le10 + cigs_gt10)
@@ -168,7 +176,7 @@ drop_test(enc, ~ parity + cigs)
 
 En conclusión, ninguno de los dos modelos puede rechazarse en favor del otro.
 
-## Contrastes de Davidson-MacKinnon
+#### Contrastes de Davidson-MacKinnon
 
 Ampliamos el modelo 1 con las predicciones del modelo 2:
 ```{r}
