@@ -2,8 +2,9 @@ library(ec1027)
 library(dynlm)
 library(ggplot2)
 
-years <- 1948:2003
-db <- zoo(intdef, years)
+data(intdef)
+
+db <- zoo(intdef, intdef$year)
 
 autoplot(db$i3)
 autoplot(db$inf)
