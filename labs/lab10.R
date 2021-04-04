@@ -9,7 +9,7 @@ autoplot(db$i3)
 autoplot(db$inf)
 autoplot(db$def)
 
-model1 <- dynlm(i3 ~ inf + def, db)
+model1 <- dynlm(i3 ~ inf + def, db, start = 1949)
 coef_table(model1)
 
 db$d1980 <- as.integer(db$year > 1979)
