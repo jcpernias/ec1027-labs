@@ -1,28 +1,27 @@
-library(tidyverse)
-library(wooldridge)
+library(ec1027)
 library(dynlm)
-library(texreg)
+library(ggplot2)
 
 t <- 1948:2003
-db <- ts(intdef, start = 1948)
+db <- zoo(intdef, t)
 
-frml_1 <- i3 ~ inf + def
-model_1 <- dynlm(frml_1, db)
-summary(model_1)
+autoplot(db$i3)
+autoplot(db$inf)
+autoplot(db$def)
 
-d1980 <- as.integer(t > 1979)
-db <- cbind(i3 = db[ , "i3"], inf = db[ , "inf"], def = db[ , "def"], t, d1980)
-frml_2 <- update(frml_1, . ~ . + d1980)
-model_2 <- dynlm(frml_2, db)
-summary(model_2)
+model1 <- dynlm(i3 ~ inf + def, db)
+coef_table(model1)
 
-frml_3 <- update(frml_2, . ~ . + L(inf) + L(def))
-model_3 <- dynlm(frml_3, db)
-summary(model_3)
+db$d1980 <- as.integer(t > 1979)
+model2 <- update(model1, . ~ . + d1980)
+summary(model2)
 
-frml_4 <- update(frml_2, . ~ . + d(inf) + d(def))
-model_4 <- dynlm(frml_4, db)
-summary(model_3)
+model3 <- update(model2, . ~ . + L(inf) + L(def))
+summary(model3)
+
+model4 <- update(model2, . ~ . + d(inf) + d(def))
+summary(model4)
 
 
-screenreg(list(model_1, model_2, model_3, model_4), digits = 4)
+library(texreg)
+screenreg(list(model1, model2, model3, model4), digits = 4)
