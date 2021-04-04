@@ -12,7 +12,7 @@ autoplot(db$def)
 model1 <- dynlm(i3 ~ inf + def, db)
 coef_table(model1)
 
-db$d1980 <- as.integer(t > 1979)
+db$d1980 <- as.integer(db$year > 1979)
 model2 <- update(model1, . ~ . + d1980)
 summary(model2)
 
