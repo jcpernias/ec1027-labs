@@ -2,11 +2,6 @@ library(ec1027)
 library(dynlm)
 library(ggplot2)
 
-#library(tidyverse)
-#library(wooldridge)
-#library(texreg)
-#library(broom)
-
 data(hseinv)
 
 hseinv <- within(hseinv, {
@@ -43,20 +38,22 @@ db$gprice <- diff(db$lprice)
 
 head(db)
 
-autoplot(db$ginvpc)
-autoplot(db$gprice)
+db2 <- window(db, start = 1948)
 
-model3 <- dynlm(linvpc ~ gprice + year, data = db, start = 1948)
+autoplot(db2$ginvpc)
+autoplot(db2$gprice)
+
+model3 <- dynlm(linvpc ~ gprice + year, data = db2)
 summary(model3)
 
-invpc_t <- dynlm(linvpc ~ year, data = db)
+invpc_t <- dynlm(linvpc ~ year, data = db2)
 linvpc_not <- resid(invpc_t)
 
-model4 <- dynlm(linvpc_not ~ gprice + year, data = db, start = 1948)
+model4 <- update(model3, linvpc_not ~ .)
 summary(model4)
 
-model5 <- dynlm(ginvpc ~ gprice + year, data = db, start = 1948)
+model5 <- update(model3, ginvpc ~ .)
 summary(model5)
 
-model6 <- dynlm(ginvpc ~ gprice, data = db, start = 1948)
+model6 <- update(model5, . ~ . - year)
 summary(model6)
