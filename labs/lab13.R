@@ -48,7 +48,6 @@ summary(dynlm(uhat1 ~ uhat_1, data = db_ar))
 
 coef_table(model1, vce = "NW")
 
-lmtest::coeftest(model1, vcov. = sandwich::NeweyWest, prewhite = FALSE)
 
 ## CO estimation
 model <- model1
@@ -86,6 +85,23 @@ uhat <- y - mm %*% coef(co)
 summary(co)
 
 
-pw <- prais::prais_winsten(frml1, data = db)
-summary(pw)
+model2 <- update(model1, . ~ . + L(prcfat))
+summary(model2)
 
+uhat <- resid(model2)
+db_u <- merge(uhat, uhat_1 = lag(uhat, k = -1), fill = 0)
+db_ar <- merge(db, db_u)
+aux_ar <- update(model1, uhat ~ . + uhat_1, data = db_ar)
+summary(aux_ar)
+
+summary(dynlm(uhat ~ uhat_1 + 0, data = db_ar))
+
+
+model3 <- update(model1, . ~ . + L(prcfat, 1) - trend)
+summary(model3)
+uhat <- resid(model3)
+autoplot(uhat)
+db_u <- merge(uhat, uhat_1 = lag(uhat, k = -1), fill = 0)
+db_ar <- merge(db, db_u)
+aux_ar <- update(model3, uhat ~ . + uhat_1, data = db_ar)
+summary(aux_ar)
