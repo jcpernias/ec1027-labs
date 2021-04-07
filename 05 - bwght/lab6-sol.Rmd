@@ -34,7 +34,7 @@ mean(smokers$cigs)
 ```
 
 
-### Estimación y contrastes de heteroscedasticidad
+### Estimación por MCO
 
 #### Modelo 1
 
@@ -43,13 +43,6 @@ Estimación por MCO del **Modelo 1**:
 mod1 <- lm(bwght ~ male + parity + faminc + cigs, data = bwght)
 coef_table(mod1)
 ```
-
-Contraste de heteroscedasticidad de Breusch-Pagan:
-```{r}
-het_test(mod1)
-```
-
-No se rechaza la hipótesis nula de homoscedasticidad.
 
 #### Modelo 2
 
@@ -73,14 +66,22 @@ mod2 <- lm(bwght ~ male + faminc + first + cigs_le10 + cigs_gt10, data = bwght)
 coef_table(mod2)
 ```
 
-Contraste de heteroscedasticidad:
+### Contrastes de heteroscedasticidad
+
+Contrastamos la presencia de de heteroscedasticidad en el **Modelo 1** con el contraste de Breusch-Pagan:
+```{r}
+het_test(mod1)
+```
+
+No se rechaza la hipótesis nula de homoscedasticidad.
+
+Contraste de heteroscedasticidad para el **Modelo 2**:
 ```{r}
 het_test(mod2)
 ```
 Tampoco en este caso se rechaza la hipótesis nula de homoscedasticidad.
 
 Dado que no hay evidencia de heteroscedasticidad, usaremos las fórmulas habituales de MCO para calcular los errores típicos de las estimaciones.
-
 
 ### Contraste RESET
 
