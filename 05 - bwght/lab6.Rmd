@@ -13,6 +13,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+with_solution <- TRUE
 ```
 
 ## Planteamiento
@@ -54,5 +55,5 @@ Responda a las siguientes preguntas:
 
 5. Compare los dos modelos utilizando contrastes de modelos no anidados. Emplee los contrastes propuestos por Mizon-Richards y los contrastes de Davidson-MacKinnon.
 
-```{r child="lab6-sol.Rmd"}
+```{r child=if (with_solution) "lab6-sol.Rmd"}
 ```
