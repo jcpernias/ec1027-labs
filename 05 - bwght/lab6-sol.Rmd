@@ -1,0 +1,163 @@
+## Resolución
+
+### Interpretación de los parámetros
+
+
+### Datos
+
+El paquete `ec1027` contiene la base de datos `bwght`.
+```{r}
+library(ec1027)
+data(bwght)
+```
+
+En las observaciones que corresponden a madres que fumaron durante el embarazo se cumple `cigs > 0`. Creamos una variable ficticia:
+```{r}
+bwght$smoker <- ifelse(bwght$cigs > 0, 1, 0)
+```
+La suma de los valores de la variable `smoker` es igual al número de fumadoras en la muestra:
+```{r}
+sum(bwght$smoker)
+```
+Es decir, en la muestra `r sum(bwght$smoker)` mujeres fumaron durante su embarazo. 
+
+Si calculamos la media de la variable ficticia, obtenemos la fracción de las observaciones que corresponde a madres fumadoras:
+```{r}
+mean(bwght$smoker)
+```
+Este resultado nos indica que el `r round(100*mean(bwght$smoker), 1)`% de las observaciones de la muestra corresponden a madres que fumaron durante el embarazo. 
+
+Para calcular la cantidad media de cigarrillos que consumían las madres fumadores, creamos una nueva base de datos que contenga sólo las observaciones para las que `cigs > 0`. 
+```{r}
+smokers <- subset(bwght, cigs > 0)
+mean(smokers$cigs)
+```
+
+
+### Estimación y contrastes de heteroscedasticidad
+
+#### Modelo 1
+
+Estimación por MCO del **Modelo 1**:
+```{r}
+mod1 <- lm(bwght ~ male + parity + faminc + cigs, data = bwght)
+coef_table(mod1)
+```
+
+Contraste de heteroscedasticidad de Breusch-Pagan:
+```{r}
+het_test(mod1)
+```
+
+No se rechaza la hipótesis nula de homoscedasticidad.
+
+#### Modelo 2
+
+En primer lugar, creamos las variables que necesitaremos en la estimación del **Modelo 2**. Para evitar escribir el nombre de la base de datos siempre que nos referimos a una variable, podemos usar la función `within`:
+```{r}
+bwght <- within(bwght, {
+  # 1 si es el primer hijo de la madre
+  first <- ifelse(parity == 1, 1, 0)
+  
+  # 1 si es la madre fumó entre 1 y 10 cigarrillos al día durante el embarazo
+  cigs_le10 <- ifelse(cigs > 0 & cigs <= 10, 1, 0)
+  
+  # 1 si es la madre fumó más de 10 cigarrillos diarios durante el embarazo
+  cigs_gt10 <- ifelse(cigs > 10, 1, 0)
+})
+```
+
+Estimación por MCO del **Modelo 2**:
+```{r}
+mod2 <- lm(bwght ~ male + faminc + first + cigs_le10 + cigs_gt10, data = bwght)
+coef_table(mod2)
+```
+
+Contraste de heteroscedasticidad:
+```{r}
+het_test(mod2)
+```
+Tampoco en este caso se rechaza la hipótesis nula de homoscedasticidad.
+
+Dado que no hay evidencia de heteroscedasticidad, usaremos las fórmulas habituales de MCO para calcular los errores típicos de las estimaciones.
+
+
+### Contraste RESET
+
+Calculamos los valores ajustados y sus cuadrados a partir de la estimaciones del **Modelo 1** y del **Modelo 2**:
+```{r}
+bwght <- within(bwght, {
+  yhat1 <- fitted(mod1)
+  sq_yhat1 <- yhat1^2
+  yhat2 <- fitted(mod2)
+  sq_yhat2 <- yhat2^2
+})
+```
+
+Cuando sólo utilizamos el cuadrado de las predicciones, el contraste RESET consiste en añadir `sq_yhat1` como regresor adicional del **Modelo 1**  y contrastar su significación con el estadístico $t$.
+```{r}
+reset1 <- update(mod1, . ~ . + sq_yhat1)
+coef_table(reset1)
+```
+
+El valor del contraste $t$ de significación de `sq_yhat1` es muy bajo lo que implica que el contraste RESET no detecta problemas en la forma funcional del modelo 1.
+
+Para aplicar el contraste RESET al **Modelo 2** estimamos una regresión auxiliar:
+```{r}
+reset2 <- update(mod2, . ~ . + sq_yhat2)
+coef_table(reset2)
+```
+
+Tampoco hay evidencia de mala especificación funcional en el **Modelo 2** de acuerdo con el contraste RESET .
+
+
+### Contrastes de modelos no anidados
+
+No podemos obtener el **Modelo 1** como un caso especial del **Modelo 2**: no hay restricciones sobre los parámetros del **Modelo 1** que produzcan un modelo equivalente al **Modelo 2**. Tampoco podemos obtener el **Modelo 2** como un caso especial del **Modelo 1**. 
+
+Dicho de otra forma, los modelos que estamos considerando *no están anidados*. En una situación como esta no podemos usar el contraste $F$ para seleccionar uno de los dos modelos.
+
+Utilizaremos dos contrastes de *modelos no anidados* para comparar el **Modelo 1** y el **Modelo 2**. Es importante recordar que para poder aplicar estos contrastes la variable dependiente en los dos modelos ha de ser exactamente la misma. En concreto, no podemos comparar un modelo donde la variable dependiente sea $y$ con otro modelo donde la variable dependiente sea $\log(y)$. 
+
+#### Contrastes de Mizon y Richards
+
+Mizon y Richards proponen contrastes de modelos no anidados basados en una regresión que contenga las variables explicativas que aparecen en ambos modelos. En nuestro caso, añadimos al **Modelo 1** las variables `first`, `cigs_le10` y `cigs_gt10`. Este _supermodelo_ contiene como casos especiales tanto al **Modelo 1** como al **Modelo 2**. Estimamos por MCO:
+```{r}
+enc <- update(mod1, . ~ . + first + cigs_le10 + cigs_gt10)
+coef_table(enc)
+```
+Si los parámetros de `first`, `cigs_le10` y `cigs_gt10` fuesen iguales a 0, obtendríamos el **Modelo 1**. Por tanto, contrastamos la hipótesis nula de que el **Modelo 1** está correctamente especificado mediante el estadístico $F$ de significación conjunta de esas variables:
+```{r}
+drop_test(enc, ~ first + cigs_le10 + cigs_gt10)
+```
+De acuerdo con el contraste, no hay evidencia de que la hipótesis nula sea incorrecta. 
+
+Para contrastar la hipótesis nula de que el **Modelo 2** está correctamente especificado utilizamos el estadístico $F$ de significación conjunta de las variables `parity` y `cigs`:
+```{r}
+drop_test(enc, ~ parity + cigs)
+```
+El valor de este contraste tampoco supone evidencia en contra de la hipótesis nula.
+
+En conclusión, con los contrastes de Mizon y Richards, ninguno de los dos modelos puede rechazarse en favor del otro.
+
+#### Contrastes de Davidson-MacKinnon
+
+Los contrastes de Davidson y MacKinnon también se llevan a cabo añadiendo a los modelos variables adicionales y contrastando la significación de estos regresores adicionales. En concreto, la propuesta de estos autores es añadir las predicciones del modelo rival. 
+
+Para contrastar la hipótesis nula de que el **Modelo 1** está bien especificado, añadimos las predicciones del **Modelo 2** y contrastamos su significación:
+```{r}
+j1 <- update(mod1, . ~ . + yhat2)
+coef_table(j1)
+```
+
+De acuerdo con este contraste rechazaríamos el **Modelo 1** a un nivel de significación del 5%.
+
+Ahora contrastamos la hipótesis nula de que el **Modelo 2** está correctamente especificado:
+```{r}
+j2 <- update(mod2, . ~ . + yhat1)
+coef_table(j2)
+```
+
+En este caso, el valor del contraste no constituiría evidencia en contra del **Modelo 2** a un nivel de significación del 5%. 
+
+En base a los contrastes de Davidson-MacKinnon, el **Modelo 2** parece una mejor alternativa.
