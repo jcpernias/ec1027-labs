@@ -39,7 +39,7 @@ Con objeto de estudiar el efecto que tiene el consumo de tabaco durante el embar
   donde también se usan las siguientes variables ficticias:
 
   + `first`: toma el valor 1 si la madre no había tenido hijos anteriormente y 0 en caso contrario.
-  + `cigs_le10`: toma valor 1 si la madre fumó ente 1 y 10 cigarrillos diarios durante el embarazo.
+  + `cigs_le10`: toma valor 1 si la madre fumó entre 1 y 10 cigarrillos diarios durante el embarazo.
   + `cigs_gt10`: toma valor 1 si la madre fumó más de 10 cigarrillos diarios durante el embarazo. 
 
 Responda a las siguientes preguntas:
@@ -177,7 +177,7 @@ Utilizaremos dos contrastes de *modelos no anidados* para comparar el **Modelo 1
 
 #### Contrastes de Mizon y Richards
 
-Mizon y Richards proponen contrastes de modelos no anidados basdos en una regresión que contenga las variables explicativas que aparecen en ambos modelos. En nuestro caso, añadimos al **Modelo 1** las variables `first`, `cigs_le10` y `cigs_gt10`. Este _supermodelo_ contiene como casos especiales tanto al **Modelo 1** como al **Modelo 2**. Estimamos por MCO:
+Mizon y Richards proponen contrastes de modelos no anidados basados en una regresión que contenga las variables explicativas que aparecen en ambos modelos. En nuestro caso, añadimos al **Modelo 1** las variables `first`, `cigs_le10` y `cigs_gt10`. Este _supermodelo_ contiene como casos especiales tanto al **Modelo 1** como al **Modelo 2**. Estimamos por MCO:
 ```{r}
 enc <- update(mod1, . ~ . + first + cigs_le10 + cigs_gt10)
 coef_table(enc)
