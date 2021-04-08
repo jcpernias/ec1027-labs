@@ -65,8 +65,7 @@ Para calcular la cantidad media de cigarrillos que consumían las madres fumador
 smokers <- subset(bwght, cigs > 0)
 mean(smokers$cigs)
 ```
-
-## Variables ficticias
+### Variables ficticias
 
 Necesitamos crear variables ficticias para la estimación del **Modelo 2**. Para evitar escribir el nombre de la base de datos siempre que nos referimos a una variable, podemos usar la función `within`:
 ```{r}
