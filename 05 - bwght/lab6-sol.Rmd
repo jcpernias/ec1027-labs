@@ -14,7 +14,7 @@ date: "Curso 2020-2021"
 
 En el caso del **Modelo 1**:
 
-- $\beta_1$: Efecto parcial de la renta familiar. En cuántas onzas habría cambiado el peso del recién nacido si la familia hubiera tenido $1000 más de renta. Esperamos que el signo sea positivo. El peso al nacer es un indicador de salud y las familias más ricas pueden dedicar más recursos a cuidados prenatales.
+- $\beta_1$: Mide el efecto parcial de la renta familiar y el valor que toma muestra en cuántas onzas habría cambiado el peso del recién nacido si la familia hubiera tenido $1000 más de renta. Esperamos que el signo sea positivo: el peso al nacer es un indicador de salud y las familias más ricas pueden dedicar más recursos a cuidados prenatales.
 
 - $\beta_2$: Mide la diferencia entre el peso de los hombres y las mujeres al nacer, manteniendo constantes los restantes determinantes del peso. Esperamos que sea positivo, ya que el peso de los hombres suele ser mayor que el de las mujeres.
 
@@ -29,7 +29,7 @@ En el caso del **Modelo 2**:
 
 - $\alpha_2$: Similar a $\beta_2$.
 
-- $\alpha_3$: Similar a $\beta_3$, pero en este caso sólo habría diferencias entre el peso medio del primer hijo y los restantes. Esperamos que el signo sea positivo.
+- $\alpha_3$: Diferencia entre el peso del primer hijo y el de los restantes hijos. Por las razones que se han expuesto antes, esperamos que el signo de este parámetro sea negativo.
 
 - $\alpha_4$: Diferencia entre el peso medio de los recién nacidos cuya madre fumaba entre 1 y 10 cigarrillos y el peso de aquellos cuya madre no fumó durante el embarazo. Esperamos que el signo sea negativo.
 
@@ -66,20 +66,9 @@ smokers <- subset(bwght, cigs > 0)
 mean(smokers$cigs)
 ```
 
+## Variables ficticias
 
-### Estimación por MCO
-
-#### Modelo 1
-
-Estimación por MCO del **Modelo 1**:
-```{r}
-mod1 <- lm(bwght ~ male + parity + faminc + cigs, data = bwght)
-coef_table(mod1)
-```
-
-#### Modelo 2
-
-En primer lugar, creamos las variables que necesitaremos en la estimación del **Modelo 2**. Para evitar escribir el nombre de la base de datos siempre que nos referimos a una variable, podemos usar la función `within`:
+Necesitamos crear variables ficticias para la estimación del **Modelo 2**. Para evitar escribir el nombre de la base de datos siempre que nos referimos a una variable, podemos usar la función `within`:
 ```{r}
 bwght <- within(bwght, {
   # 1 si es el primer hijo de la madre
@@ -93,11 +82,22 @@ bwght <- within(bwght, {
 })
 ```
 
+
+### Estimación por MCO
+
+Estimación por MCO del **Modelo 1**:
+```{r}
+mod1 <- lm(bwght ~ male + parity + faminc + cigs, data = bwght)
+coef_table(mod1)
+```
+
 Estimación por MCO del **Modelo 2**:
 ```{r}
 mod2 <- lm(bwght ~ male + faminc + first + cigs_le10 + cigs_gt10, data = bwght)
 coef_table(mod2)
 ```
+
+En las dos regresiones obtenemos los signos de los parámetros estimados coinciden con lo que esperábamos. 
 
 ### Contrastes de heteroscedasticidad
 
@@ -114,7 +114,7 @@ het_test(mod2)
 ```
 Tampoco en este caso se rechaza la hipótesis nula de homoscedasticidad.
 
-Dado que no hay evidencia de heteroscedasticidad, usaremos las fórmulas habituales de MCO para calcular los errores típicos de las estimaciones.
+Dado que no hay evidencia de heteroscedasticidad, usaremos las fórmulas habituales de MCO para calcular los errores típicos de las estimaciones. Los contrastes $t$ de significación individual que obtuvimos cuando estimamos por MCO son válidos y muestran que las variables explicativas del **Modelo 1** y del **Modelo 2** tienen un efecto significativo sobre la variable dependiente.
 
 ### Contraste RESET
 
@@ -134,7 +134,7 @@ reset1 <- update(mod1, . ~ . + sq_yhat1)
 coef_table(reset1)
 ```
 
-El valor del contraste $t$ de significación de `sq_yhat1` es muy bajo lo que implica que el contraste RESET no detecta problemas en la forma funcional del modelo 1.
+El valor del contraste $t$ de significación de `sq_yhat1` es muy bajo: el contraste RESET no detecta problemas en la forma funcional del modelo 1.
 
 Para aplicar el contraste RESET al **Modelo 2** estimamos una regresión auxiliar:
 ```{r}
@@ -142,41 +142,55 @@ reset2 <- update(mod2, . ~ . + sq_yhat2)
 coef_table(reset2)
 ```
 
-Tampoco hay evidencia de mala especificación funcional en el **Modelo 2** de acuerdo con el contraste RESET .
+Tampoco hay evidencia de mala especificación funcional en el **Modelo 2** de acuerdo con el contraste RESET.
 
 
 ### Contrastes de modelos no anidados
 
-No podemos obtener el **Modelo 1** como un caso especial del **Modelo 2**: no hay restricciones sobre los parámetros del **Modelo 1** que produzcan un modelo equivalente al **Modelo 2**. Tampoco podemos obtener el **Modelo 2** como un caso especial del **Modelo 1**. 
-
-Dicho de otra forma, los modelos que estamos considerando *no están anidados*. En una situación como esta no podemos usar el contraste $F$ para seleccionar uno de los dos modelos.
+No podemos obtener el **Modelo 1** como un caso especial del **Modelo 2**: no hay restricciones sobre los parámetros del **Modelo 1** que produzcan un modelo equivalente al **Modelo 2**. Tampoco podemos obtener el **Modelo 2** como un caso especial del **Modelo 1**. Dicho de otra forma, los modelos que estamos considerando *no están anidados*. En una situación como esta no podemos usar el contraste $F$ para seleccionar uno de los dos modelos.
 
 Utilizaremos dos contrastes de *modelos no anidados* para comparar el **Modelo 1** y el **Modelo 2**. Es importante recordar que para poder aplicar estos contrastes la variable dependiente en los dos modelos ha de ser exactamente la misma. En concreto, no podemos comparar un modelo donde la variable dependiente sea $y$ con otro modelo donde la variable dependiente sea $\log(y)$. 
 
 #### Contrastes de Mizon y Richards
 
-Mizon y Richards proponen contrastes de modelos no anidados basados en una regresión que contenga las variables explicativas que aparecen en ambos modelos. En nuestro caso, añadimos al **Modelo 1** las variables `first`, `cigs_le10` y `cigs_gt10`. Este _supermodelo_ contiene como casos especiales tanto al **Modelo 1** como al **Modelo 2**. Estimamos por MCO:
+Mizon y Richards proponen contrastes de modelos no anidados basados en una regresión que contenga las variables explicativas que aparecen en ambos modelos. En nuestro caso, añadimos al **Modelo 1** las variables $\textit{first}$, $\textit{cigs_le10}$ y $\textit{cigs_gt10}$. Este _supermodelo_ contiene como casos especiales tanto al **Modelo 1** como al **Modelo 2**.
+$$
+\textit{bwght} = 
+\delta_0 + 
+\delta_1 \textit{faminc} + 
+\delta_2 \textit{male} + 
+\delta_3 \textit{parity} + 
+\delta_4 \textit{cigs} + 
+\delta_5 \textit{first} + 
+\delta_6 \textit{cigs_le10} + 
+\delta_7 \textit{cigs_gt10} +
+w
+$$
+Si $\delta_5 = \delta_6 = \delta_7 = 0$ se obtiene el **Modelo 1**. Por otro lado, si $\delta_3 = \delta_4 = 0$ el modelo resultante es equivalente al **Modelo 2**. 
+
+
+Para llevar a cabo los contrastes, estimamos por MCO el modelo ampliado:
 ```{r}
 enc <- update(mod1, . ~ . + first + cigs_le10 + cigs_gt10)
 coef_table(enc)
 ```
-Si los parámetros de `first`, `cigs_le10` y `cigs_gt10` fuesen iguales a 0, obtendríamos el **Modelo 1**. Por tanto, contrastamos la hipótesis nula de que el **Modelo 1** está correctamente especificado mediante el estadístico $F$ de significación conjunta de esas variables:
+Si los parámetros de $\textit{first}$, $\textit{cigs_le10}$ y $\textit{cigs_gt10}$ fuesen iguales a 0, obtendríamos el **Modelo 1**. Por tanto, contrastamos la hipótesis nula de que el **Modelo 1** está correctamente especificado mediante el estadístico $F$ de significación conjunta de esas variables:
 ```{r}
 drop_test(enc, ~ first + cigs_le10 + cigs_gt10)
 ```
 De acuerdo con el contraste, no hay evidencia de que la hipótesis nula sea incorrecta. 
 
-Para contrastar la hipótesis nula de que el **Modelo 2** está correctamente especificado utilizamos el estadístico $F$ de significación conjunta de las variables `parity` y `cigs`:
+Para contrastar la hipótesis nula de que el **Modelo 2** está correctamente especificado utilizamos el estadístico $F$ de significación conjunta de las variables $\textit{parity}$ y $\textit{cigs}$:
 ```{r}
 drop_test(enc, ~ parity + cigs)
 ```
 El valor de este contraste tampoco supone evidencia en contra de la hipótesis nula.
 
-En conclusión, con los contrastes de Mizon y Richards, ninguno de los dos modelos puede rechazarse en favor del otro.
+En conclusión, ninguno de los dos modelos puede rechazarse en favor del otro con los contrastes de Mizon y Richards.
 
 #### Contrastes de Davidson-MacKinnon
 
-Los contrastes de Davidson y MacKinnon también se llevan a cabo añadiendo a los modelos variables adicionales y contrastando la significación de estos regresores adicionales. En concreto, la propuesta de estos autores es añadir las predicciones del modelo rival. 
+Los contrastes de Davidson y MacKinnon también se llevan a cabo añadiendo a los modelos variables adicionales y contrastando la significación de estos regresores adicionales. En concreto, la propuesta de estos autores es añadir a cada modelo las predicciones obtenidas con el modelo rival. 
 
 Para contrastar la hipótesis nula de que el **Modelo 1** está bien especificado, añadimos las predicciones del **Modelo 2** y contrastamos su significación:
 ```{r}
