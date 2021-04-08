@@ -12,6 +12,30 @@ date: "Curso 2020-2021"
 
 ### Interpretación de los parámetros
 
+En el caso del **Modelo 1**:
+
+- $\beta_1$: Efecto parcial de la renta familiar. En cuántas onzas habría cambiado el peso del recién nacido si la familia hubiera tenido $1000 más de renta. Esperamos que el signo sea positivo. El peso al nacer es un indicador de salud y las familias más ricas pueden dedicar más recursos a cuidados prenatales.
+
+- $\beta_2$: Mide la diferencia entre el peso de los hombres y las mujeres al nacer, manteniendo constantes los restantes determinantes del peso. Esperamos que sea positivo, ya que el peso de los hombres suele ser mayor que el de las mujeres.
+
+- $\beta_3$: La diferencia entre el peso medio de dos hijos consecutivos (peso del segundo hijo menos peso del primero, peso del tercer hijo menos el del segundo hijo, etc.) El primer hijo suele pesar mucho menos que los restantes, así que esperamos que este parámetro sea positivo.
+
+- $\beta_4$: Cuanto varía el peso de un recién nacido por cada cigarrillo diario que fumó la madre durante el embarazo. Dado que el consumo de tabaco puede afectar negativamente la salud del recién nacido, esperamos que el signo de este coeficiente sea negativo.
+
+
+En el caso del **Modelo 2**:
+
+- $\alpha_1$: Similar a $\beta_1$.
+
+- $\alpha_2$: Similar a $\beta_2$.
+
+- $\alpha_3$: Similar a $\beta_3$, pero en este caso sólo habría diferencias entre el peso medio del primer hijo y los restantes. Esperamos que el signo sea positivo.
+
+- $\alpha_4$: Diferencia entre el peso medio de los recién nacidos cuya madre fumaba entre 1 y 10 cigarrillos y el peso de aquellos cuya madre no fumó durante el embarazo. Esperamos que el signo sea negativo.
+
+- $\alpha_5$: Diferencia entre el peso medio de los recién nacidos cuya madre fumaba más de 10 cigarrillos y el peso de aquellos cuya madre no fumó durante el embarazo. Esperamos que el signo sea negativo.
+
+
 ### Datos
 
 El paquete `ec1027` contiene la base de datos `bwght`.
