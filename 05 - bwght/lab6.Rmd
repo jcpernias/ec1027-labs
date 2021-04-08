@@ -2,18 +2,10 @@
 title: "El efecto del tabaco sobre el peso de los recién nacidos"
 author: "EC1027 --- Econometría I"
 date: "Curso 2020-2021"
-output: 
-  html_document: 
-    toc: yes
-    toc_depth: 3
-    toc_float: yes
-    highlight: pygments
-    theme: yeti
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-with_solution <- TRUE
 ```
 
 ## Planteamiento
@@ -55,5 +47,3 @@ Responda a las siguientes preguntas:
 
 5. Compare los dos modelos utilizando contrastes de modelos no anidados. Emplee los contrastes propuestos por Mizon-Richards y los contrastes de Davidson-MacKinnon.
 
-```{r child=if (with_solution) "lab6-sol.Rmd"}
-```
