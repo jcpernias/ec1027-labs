@@ -1,0 +1,28 @@
+---
+title: "Accidentes de tráfico y leyes de circulación (I)"
+author: "EC1027 --- Econometría I"
+date: "Curso 2020-2021"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Planteamiento
+
+La base de datos `traffic2` contiene 108 observaciones mensuales, desde enero de 1981 hasta diciembre de 1989, que recogen información sobre accidentes automovilísticos en California, leyes de tráfico y algunas otras variables relacionadas. Utilice ese conjunto de datos para responder a las siguientes cuestiones:
+
+1. La variable ficticia $\textit{beltlaw}$ toma el valor 1 en los periodos en que está vigente una ley  que hacía obligatorio el uso del cinturón de seguridad en California. ¿En qué mes y año entró en vigor esta ley? La variable ficticia $\textit{spdlaw}$ toma el valor 1 a partir de la entrada en vigor de una ley que elevaba el límite de velocidad desde 50 millas por hora hasta 65 millas por hora. ¿Cuando se elevó el límite de velocidad?
+
+2. Cree una nueva variable, $\textit{ltotacc}$ que sea igual al logaritmo del número de accidentes totales, $\textit{totacc}$. Regrese la variable $\textit{ltotacc}$ sobre una tendencia lineal y 11 variables ficticias mensuales, utilizando enero como el mes base. Interprete el coeficiente estimado de la tendencia. ¿Qué significan los parámetros de las ficticias estacionales? ¿Se diría que existe estacionalidad en el número de accidentes totales?
+
+3. Incluya en la regresión del apartado anterior las variables $\textit{wkends}$ (número de días de fin de semana en cada mes), $\textit{unem}$ (tasa de desempleo), $\textit{spdlaw}$ (ley que eleva el límite de velocidad) y $\textit{beltlaw}$ (ley sobre el uso del cinturón de seguridad). Comente el coeficiente de la variable $\textit{unem}$: ¿tienen sentido el signo y la magnitud de dicho coeficiente?
+
+4. Interprete la estimaciones de los parámetros de las variables $\textit{spdlaw}$ y $\textit{beltlaw}$. ¿Coinciden los efectos estimados de estas variables con los esperados? Explique su respuesta.
+
+5. Evalúe la bondad del ajuste de la regresión. ¿Es el $R^2$ una buena medida de la capacidad explicativa de las variables $\textit{wkends}$, $\textit{unem}$, $\textit{spdlaw}$ y $\textit{beltlaw}$? ¿Por qué? ¿Cómo puede obtenerse una medida más adecuada de la capacidad explicativa de estas variables?
+
+6. La variable $\textit{fatacc}$ representa el número de accidentes en los que se ha producido al menos un fallecimiento. Construya una nueva variable, $\textit{prcfat}$, calculando el porcentaje que representan los accidentes fatales sobre el total de accidentes. ¿Cuál es el valor medio de $\textit{prcfat}$ en los meses para los que tenemos información? 
+
+7. Reemplace la variable dependiente de la regresión del punto 3 por la variable $\textit{prcfat}$. Comente los efectos estimados y la significación de las variables ficticias que captan los efectos de las regulaciones del límite de velocidad y de la obligatoriedad del uso del cinturón de seguridad.
+

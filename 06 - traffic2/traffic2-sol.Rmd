@@ -1,0 +1,147 @@
+---
+title: "Accidentes de tráfico y leyes de circulación (I)"
+author: "EC1027 --- Econometría I"
+date: "Curso 2020-2021"
+---
+
+
+```{r child="traffic2.Rmd"}
+```
+
+## Resolución
+
+
+### Datos
+
+Necesitaremos algunos paquetes de R:
+
+- `dynlm`: regresión con series temporales. Automáticamente carga el paquete `zoo` que proporciona funciones para trabajar con series temporales.
+```{r}
+library(dynlm)
+```
+
+- `ggplot2`: gráficos.
+```{r}
+library(ggplot2)
+```
+
+- `ec1027`: contiene la base de datos `traffic2` con la que trabajaremos en este laboratorio.
+```{r}
+library(ec1027)
+data(traffic2)
+```
+
+Podemos ver qué variables están incluidas en la base de datos con la función `str`:
+```{r}
+str(traffic2)
+```
+Para consultar la documentación de la base de datos escribimos `? traffic2` en la consola de R o usamos la función `help`:
+```{r eval=FALSE}
+help(traffic2)
+```
+![](help.png)
+
+Para determinar cuándo entran en vigor las leyes de circulación, crearemos en primer lugar, una base de datos que sólo contenga las variables `year`, `month`, `beltlaw` y `spdlaw`. La función `subset` tiene el argumento `select` que nos permite especificar qué variables queremos conservar:
+```{r}
+laws <- subset(traffic2, select = c(year, month, beltlaw, spdlaw))
+```
+Ahora podemos examinar la base de datos que hemos creado haciendo doble click sobre ella en la pestaña Environment de RStudio o escribiendo `View(laws)` en la consola:
+
+![](View.png)
+
+Podemos comprobar que la variable `beltlaw` toma valor 1 a partir de enero de 1986, lo que quiere decir que ése mes entró en vigor la obligación de usar el cinturón de seguridad. Por otro lado, examinando los valores de `spdlaw` concluimos que el límite de velocidad se elevó en mayo de 1987.
+
+Finalmente, si ya no vamos a usar el conjunto de datos `laws` podemos eliminarlo de la memoria del ordenador:
+```{r}
+rm(laws)
+```
+
+
+### Tendencia y estacionalidad
+
+Añadimos una nueva variable, `ltotacc`, a la base de datos `traffic2` calculando el logaritmo del total de accidentes:
+```{r}
+traffic2$ltotacc <- log(traffic2$totacc)
+```
+
+
+Con la función `zooreg` creamos a partir de `traffic2` una base de datos de series temporales: `db`. Indicamos cuál es el periodo inicial de nuestros datos en el argumento `start`. Dado que nuestra muestra comienza en enero de 1981, escribimos `start = c(1981, 1)`. Finalmente, para declarar que nuestros datos son mensuales usamos el argumento `frequency = 12`:
+```{r}
+db <- zooreg(traffic2, start = c(1981, 1), frequency = 12)
+```
+
+Con `autoplot` podemos obtener gráficos de las series temporales contenidas en `db`. Por ejemplo, podemos representar la evolución de `ltotacc` con:
+```{r}
+autoplot(db$ltotacc)
+```
+
+El gráfico anterior muestra una tendencia creciente del número de accidentes, aunque parece reducirse en los últimos años de la muestra. También se aprecian ciertos movimientos estacionales, aunque son un tanto irregulares y parecen cambiar con el paso del tiempo.
+
+Trataremos de capturar la tendencia con una variable que toma los valores 1, 2, 3, ... En R podemos construir la variable `trend` como una secuencia de enteros desde 1 hasta el número de filas de `db` con la siguiente línea:
+```{r}
+db$trend <- 1:NROW(db)
+```
+
+Para estimar modelos de regresión con series temporales usaremos la función `dynlm` que añade algunas características útiles a `lm`. En este laboratorio la usaremos para introducir variables ficticias estacionales en el modelo estimado. Para ello, en la fórmula del modelo de regresión incluimos: `season(db)`. Es importante recordar que tenemos que especificar entre paréntesis la base de datos que estamos usando (en nuestro caso `db`) o una de las variables de la base de datos: podríamos haber usado `season(ltotacc)` o `season(year)`. 
+
+Regresión de `ltotacc` con respecto de una tendencia lineal y variables ficticias estacionales:
+```{r}
+mod1 <- dynlm(ltotacc ~ trend + season(db), data = db)
+summary(mod1)
+```
+
+El coeficiente `trend` indica que cada mes, si ignoramos las variaciones estacionales, el número de accidentes crece un `r round(100 * coef(mod1)['trend'], 2)`%. Multiplicando por 12 podemos ver que el número de accidentes crece un `r round(12 * 100 * coef(mod1)['trend'], 1)`% cada año.
+
+Por otro lado, los parámetros de las variables ficticias comparan el número medio de accidentes que se producen cada mes con los que ocurren en enero, una vez descontada la tendencia lineal. Los resultados de la regresión indican que sólo en los meses de febrero se producen menos accidentes que en enero: un `r -round(100 * coef(mod1)['season(db)Feb'], 1)`% menos (aunque el efecto no es significativa al 5%). Hay varios meses en los que el número de accidentes es significativamente mayor que en enero: marzo, agosto, octubre, noviembre y diciembre registran entre un 5% y un 9% más accidentes que enero. Los parámetros de los restantes meses no son significativos al 5% (aunque la estimación de septiembre es significativa al 10%). Si contrastamos la significación conjunta de las variables estacionales rechazamos la hipótesis nula de que todos sus coeficientes sean iguales a 0:
+```{r}
+drop_test(mod1, ~ season(db))
+```
+
+### Más regresores
+
+```{r}
+mod2 <- update(mod1, . ~ . + unem + wkends + beltlaw + spdlaw)
+summary(mod2)
+```
+
+### Variables ficticias
+
+
+### Bondad del ajuste
+
+```{r}
+ydot <- resid(mod1)
+autoplot(ydot)
+```
+```{r}
+mod3 <- update(mod2, ydot ~ .)
+summary(mod3)
+```
+
+```{r echo=FALSE}
+library(modelsummary)
+modelsummary(list(mod2 = mod2, mod3 = mod3), 
+             estimate = "{estimate} ({std.error}){stars}", 
+             statistic = NULL,
+             gof_omit = 'AIC|BIC|Log\\.Lik\\.')
+```
+
+
+### Accidentes fatales
+
+```{r}
+prcfat <- 100 * db$fatacc / db$totacc
+autoplot(prcfat)
+```
+
+```{r}
+mean(prcfat)
+```
+
+### Regresión
+
+```{r}
+mod4 <- update(mod2,  prcfat ~ .)
+summary(mod4)
+```
+
