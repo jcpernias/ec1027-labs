@@ -59,7 +59,7 @@ rm(laws)
 
 ### Tendencia y estacionalidad
 
-Añadimos una nueva variable, `ltotacc`, a la base de datos `traffic2` calculando el logaritmo del total de accidentes:
+Calculamos el logaritmo del total de accidentes y guardamos el resultado en `ltotacc`, una nueva variable de la base de datos `traffic2`:
 ```{r}
 traffic2$ltotacc <- log(traffic2$totacc)
 ```
@@ -99,25 +99,39 @@ drop_test(mod1, ~ season(db))
 
 ### Más regresores
 
+Estimamos un nuevo modelo de regresión donde añadimos las variables `unem`, `wkends`, `beltlaw` y `spdlaw`:
 ```{r}
 mod2 <- update(mod1, . ~ . + unem + wkends + beltlaw + spdlaw)
 summary(mod2)
 ```
 
+La variable `unem` es la tasa de desempleo en California durante el periodo analizado. La estimación del efecto de esta variable es significativamente distinto de 0 al 5% y tiene signo negativo. De acuerdo con esa estimación, cuando la tasa de desempleo aumenta en un punto porcentual (por ejemplo, pasando del 5% al 6%), los accidentes de tráfico se reducen en un `r round(100 * abs(coef(mod2)['unem']), 1)`%. Posiblemente, un empeoramiento de las condiciones económicas que eleve la tasa de desempleo también tenga el efecto de reducir el volumen de tráfico en las carreteras de California y, en consecuencia, el número de accidentes disminuya.
+
 ### Variables ficticias
 
+Los parámetros de las variables `beltlaw` y `spdlaw` miden cómo cambia el número de accidentes de tráfico como consecuencia de la entrada en vigor de la ley que obligan a usar el cinturón de seguridad y de la que eleva el límite de velocidad, respectivamente. Cada una de esas variables tienen un efecto significativamente distinto de 0 a los niveles usuales de significación. 
+
+La estimación del parámetro de `beltlaw` indica que el número de accidentes de tráfico se elevó un `r round(100 * abs(coef(mod2)['beltlaw']), 1)`% despues de que se introdujera la obligación del uso del cinturón. Una posible explicación de este resultado es que los conductores se sientan más protegidos y que sean menos cuidadosos cuando conducen usando el cinturón.
+
+Por otro lado, la estimación del parámetro de `spdlaw` muestra que los accidentes de tráfico disminuyeron un `r round(100 * abs(coef(mod2)['spdlaw']), 1)`% tras la elevación del límite de velocidad. Quizás los conductores de California considerasen que la ley aumentaba el riesgo de sufrir un accidente y se mostraran más precavidos a partir de su aprobación.  
 
 ### Bondad del ajuste
 
+Las medidas usuales de bondad del ajuste suelen tomar valores muy altos cuando la variable dependiente presenta crecimiento tendencial y estacionalidad e incluimos regresores que capten estos efectos. Por ejemplo, el $R^2$ del modelo `mod2` es `r round(summary(mod2)$r.squared, 2)`. Sin embargo, este coeficiente no refleja adecuadamente la capacidad explicativa de los regresores `unem`, `wkends`, `beltlaw` y `spdlaw`. 
+
+Para obtener una medida más adecuada de la capacidad explicativa de los regresores procedemos, en primer lugar, a eliminar la tendencia y la estacionalidad de la variable dependiente. Para ello obtenemos los residuos de `mod1` donde regresabamos `ltotacc` sobre una tendencia lineal y las ficticias estacionales. Estos residuos son la parte de la variable dependiente que no puede ser explicada por el crecimiento tendencial y la estacionalidad:
+
 ```{r}
 ydot <- resid(mod1)
-autoplot(ydot)
 ```
+
+En segundo lugar, reemplazamos en el modelo `mod2` la variable dependiente por `ydot`, el número de accidentes despues de eliminar la tendencia y la estacionalidad: 
 ```{r}
 mod3 <- update(mod2, ydot ~ .)
 summary(mod3)
 ```
 
+Presentamos los resultados de `mod2` y `mod3` en una tabla para facilitar su comparación: 
 ```{r echo=FALSE}
 library(modelsummary)
 modelsummary(list(mod2 = mod2, mod3 = mod3), 
@@ -126,22 +140,43 @@ modelsummary(list(mod2 = mod2, mod3 = mod3),
              gof_omit = 'AIC|BIC|Log\\.Lik\\.')
 ```
 
+Como puede comprobarse, con los dos modelos se obtienen idénticas estimaciones de los parámetros de las variables explicativas `unem`, `wkends`, `beltlaw` y `spdlaw`, así como de sus errores típicos. Sin embargo hay grandes diferencias entre los coeficientes de determinación. Tal y como hemos construido la variable dependiente de `mod3`, el $R^2$ de esta regresión mide qué parte de la variación de los accidentes está relacionada con las variables explicativas, una vez que hemos descontado la tendencia y la estacionalidad. Es decir, las variables `unem`, `wkends`, `beltlaw` y `spdlaw` explicarían el `r round(100 * summary(mod3)$r.squared, 1)`% de la variación de `ltotacc` que no está asociada a la tendencia y a la estacionalidad.
 
 ### Accidentes fatales
 
+Calculamos el porcentaje de accidentes fatales, lo guardamos en la variable `prcfat` y lo representamos gráficamente:
 ```{r}
-prcfat <- 100 * db$fatacc / db$totacc
-autoplot(prcfat)
+db$prcfat <- 100 * db$fatacc / db$totacc
+autoplot(db$prcfat)
 ```
 
+Calculamos la media de `prcfat`:
 ```{r}
-mean(prcfat)
+mean(db$prcfat)
 ```
+
+Por tanto, a lo largo de todo el período la media del porcentaje de accidentes mortales es `r round(mean(db$prcfat), 2)`%. El valor más alto de esta serie fue algo superior a 1.2% y se produjo en el primer año del periodo analizado. La serie `prcfat` parece presentar una tendencia decreciente y movimientos estacionales irregulares y cambiantes en el tiempo.
+
 
 ### Regresión
 
+Estimamos un nuevo modelo de regresión donde la variable dependiente es `prcfat` y usamos los mismos regresores que en el modelo `mod2`:
 ```{r}
 mod4 <- update(mod2,  prcfat ~ .)
 summary(mod4)
 ```
+
+Con respecto a las estimaciones obtenidas:
+
+- Se confirma una tendencia negativa y significativa.
+
+- Hay efectos estacionales y, usando un nivel de significación del 5%, el número de accidentes mortales es significativamente mayor en los meses de abril a octubre que en el mes de enero.
+
+- La variable `unem` tiene un efecto significativamente negativo mostrando una relación inversa entre actividad económica y la frecuencia de accidentes mortales.
+
+- La variable `wkends` no tiene un efecto significativo sobre `prcfat`.
+
+- El signo de `beltlaw` es negativo lo que sugiere que el cinturón de seguridad sería efectivo y reduciría la mortalidad en los accidentes de tráfico. Sin embargo, este efecto está estimado muy imprecisamente y no podemos rechazar la hipótesis de que sea nulo.
+
+- El efecto de `spdlaw` sobre la frecuencia de accidentes mortales es positivo y significativo. Las estimaciones confirmarían que la elevación del límite de velocidad conllevo un aumento de los accidentes mortales en las carreteras de California.
 
