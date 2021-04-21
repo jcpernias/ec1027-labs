@@ -1,0 +1,111 @@
+---
+title: "Precios y salarios"
+author: "EC1027 --- Econometría I"
+date: "Curso 2020-2021"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Planteamiento
+
+Con la función `zooreg` creamos a partir de `wageprc` una base de datos de series temporales: `db`. Indicamos cuál es el periodo inicial de nuestros datos en el argumento `start`. Dado que nuestra muestra comienza en enero de 1964, escribimos `start = c(1964, 1)`. Finalmente, para declarar que nuestros datos son mensuales usamos el argumento `frequency = 12`:
+```{r}
+db <- zooreg(wageprc, start = c(1964, 1), frequency = 12)
+```
+
+Con `autoplot` podemos obtener gráficos de las series temporales contenidas en `db`. Por ejemplo, podemos representar la evolución de `price` con:
+```{r}
+autoplot(db$price)
+```
+
+```{r}
+dbq <- aggregate(db, as.yearqtr, mean)
+```
+
+
+```{r}
+d <- function(x, lag = 1) {
+  base::diff(x, lag = lag, na.pad = TRUE)
+}
+
+L <- function(x, k = 1) {
+  window(stats::lag(x, k = -k, na.pad = TRUE), start = start(x), end = end(x))
+}
+```
+
+
+```{r}
+dbq$gp <- d(log(dbq$price))
+dbq$gw <- d(log(dbq$wage))
+```
+
+```{r}
+autoplot(dbq$gp)
+```
+```{r}
+autoplot(dbq$gw)
+```
+```{r}
+ggplot(dbq) + geom_point(aes(x = gw, y = gp))
+```
+
+```{r}
+mod1 <- dynlm(gp ~ gw, data = dbq)
+summary(mod1)
+```
+```{r}
+db$gw_1 <- L(db$gw, 1)
+db$gw_2 <- L(db$gw, 2)
+db$gw_3 <- L(db$gw, 3)
+```
+
+```{r}
+mod2 <- dynlm(gp ~ gw + L(gw, 1) + L(gw, 2) + L(gw, 3), data = dbq)
+summary(mod2)
+```
+
+```{r}
+dl1 <- dynlm(gp ~ gw + L(gw, 1), data = dbq)
+summary(dl1)
+```
+
+```{r}
+dl2 <- update(dl1, .  ~ . + L(gw, 2))
+summary(dl2)
+```
+
+```{r}
+dl1 <- dynlm(gp ~ gw + L(gw, 1), data = dbq, start = c(1966, 1))
+summary(dl1)
+```
+
+```{r}
+dl2 <- update(dl1, . ~ . + L(gw, 2))
+summary(dl2)
+```
+
+
+```{r}
+dl3  <- update(dl2, . ~ . + L(gw, 3))
+dl4  <- update(dl3, . ~ . + L(gw, 4))
+dl5  <- update(dl4, . ~ . + L(gw, 5))
+dl6  <- update(dl5, . ~ . + L(gw, 6))
+```
+
+
+```{r}
+dl_models <- list(dl1, dl2, dl3, dl4, dl5, dl6)
+unlist(lapply(dl_models, BIC))
+```
+
+```{r}
+summary(dl2)
+```
+
+```{r}
+dl2_lr <- dynlm(gp ~ d(gw) + L(d(gw), 1) + L(gw, 2), 
+             data = dbq, start = c(1966, 1))
+summary(dl2_lr)
+```
