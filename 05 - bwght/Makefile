@@ -1,10 +1,10 @@
 # -*- mode: GNUMakefile; -*-
 
-LABS := lab6
+LABS := wageprc
 
 R_LIBS_USER := ~/local/share/R
 
-RMD_FILES := $(addsuffix .Rmd, $(LABS)) $(addsuffix -sol.Rmd, $(LABS))
+RMD_FILES := $(addsuffix .Rmd, $(LABS)))
 HTML_FILES := $(patsubst %.Rmd,%.html,$(RMD_FILES))
 
 all: html
