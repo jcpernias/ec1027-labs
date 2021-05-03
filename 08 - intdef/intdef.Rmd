@@ -1,0 +1,26 @@
+---
+title: "Tipos de interés, inflación y déficit público"
+author: "EC1027 --- Econometría I"
+date: "Curso 2020-2021"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Planteamiento
+
+Los datos contenidos en `intdef` provienen de varias ediciones del *Economic Report of the President* y recogen información sobre tipos de interés, inflación y déficit público en Estados Unidos durante el periodo comprendido entre los años 1948 y 1996.  La variable $\textit{i3}$ es el tipo de interés de las letras del Tesoro a tres meses, $\textit{inf}$ es la tasa de inflación anual calculada sobre el índice de precios al consumo y $\textit{def}$ es el déficit presupuestario del gobierno federal como porcentaje del PIB.
+
+
+1. Estime por MCO los parámetros de la función de regresión:
+  $$
+    \textit{i3}_t = \alpha + \beta \textit{inf}_t + \gamma \textit{def}_t + u_t
+  $$
+  Interprete las estimaciones de los parámetros. ¿Bajo qué condiciones serían insesgados los estimadores de MCO? ¿Es razonable que esas condiciones se cumplan en este caso?
+
+2. En octubre de 1979 la Reserva Federal cambió su política monetaria y se pasó de controlar la oferta monetaria a un control directo de los tipos de interés. Defina una variable ficticia que tome el valor 1 para los años posteriores a 1979.  Incluya esta variable en la regresión anterior para comprobar si se produce algún cambio en la ecuación de los tipos de interés después de 1979. ¿A qué conclusión se llega?
+
+3. Incluya ahora un retardo de $\textit{inf}$ y $\textit{def}$. Interprete las nuevas estimaciones.
+
+4. Obtenga ahora los multiplicadores de largo plazo de $\textit{inf}$ y $\textit{def}$ sobre $\textit{i3}$. Compare el multiplicador de largo plazo de la inflación con el efecto de la inflación estimado anteriormente en la regresión estática. ¿Son muy diferentes?

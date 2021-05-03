@@ -1,0 +1,125 @@
+---
+title: "Tipos de interés, inflación y déficit público"
+author: "EC1027 --- Econometría I"
+date: "Curso 2020-2021"
+---
+
+
+```{r child="intdef.Rmd"}
+```
+
+## Resolución
+
+
+### Datos
+
+Necesitaremos algunos paquetes de R:
+
+- `dynlm`: regresión con series temporales.
+```{r}
+library(dynlm)
+```
+
+- `ggplot2`: gráficos.
+```{r}
+library(ggplot2)
+```
+
+- `ec1027`: contiene la base de datos `intdef` con la que trabajaremos en este laboratorio.
+```{r}
+library(ec1027)
+data(intdef)
+```
+
+Con la función `zooreg` creamos a partir de `intdef` una base de datos de series temporales: `db`. Los datos en esta ocasión son anuales y la primera observación corresponde a 1948:
+```{r}
+db <- zooreg(intdef, start = 1948, frequency = 1)
+```
+
+
+### Regresión estática
+
+```{r}
+mod1 <- dynlm(i3 ~ inf + def, data = db, start = 1950)
+summary(mod1)
+```
+
+De acuerdo con las estimaciones anteriores:
+
+- _Ceteris paribus_, Un aumento de la inflación de 1 punto porcentual produciría una elevación del tipo de interés de 0.64 puntos porcentuales.
+
+- Si el déficit se incrementase en 1 punto porcentual, el tipo de interés crecería 0.62 puntos porcentuales.
+
+Las estimaciones de los parámetros serían insesgadas si la inflación y el déficit público fueran estrictamente exógenos en la regresión anterior. Este supuesto requiere:
+
+- Exogeneidad contemporánea: $E(u_t | \textit{inf}_{t}, \textit{def}_{t}) = 0$. 
+
+- No existe relación entre el término de error y valores pasados de las variables explicativas. Por ejemplo: $E(u_t | \textit{inf}_{t-1}, \textit{def}_{t-1}) = 0$.
+
+- No existe relación entre el término de error y valores futuros de las variables explicativas. Por ejemplo: $E(u_t | \textit{inf}_{t+1}, \textit{def}_{t+1}) = 0$.
+
+Además de la exogeneidad contemporánea, para obtener estimaciones insesgadas en la regresión estática se requiere que, por un lado, la inflación y el déficit de años anteriores no influyan en los tipos de interés actuales y, por otro lado, el tipo de interés presente no influya en la inflación y el déficit del futuro. Probablemente, estas condiciones no se cumplen en nuestro caso.
+
+### Cambio en la política monetaria
+
+Añadimos la variable ficticia `d1980` a la base de datos `db` y la incluimos en la regresión:  
+```{r}
+db$d1980 <- ifelse(db$year > 1979, 1, 0)
+mod2 <- update(mod1, . ~ . + d1980)
+summary(mod2)
+```
+
+El parámetro de la variable ficticia `d1980` es significativamente distinto de 0 para un nivel de significación del 5%, y su magnitud mostraría una importante elevación de los tipos de interés a partir de 1980. Por otro lado, la estimación del parámetro de $\textit{def}$ disminuye drásticamente y no es significativamente distinta de 0. Finalmente, la estimación del efecto de la inflación apenas cambia.
+
+### Retardos
+
+Estimamos un nuevo modelo de regresión que incluye el primer retardo de la inflación y del déficit público:
+$$
+\textit{i3}_t = \alpha + \beta_0 \textit{inf}_t + \beta_1 \textit{inf}_{t-1} + \gamma_0 \textit{def}_{t} + \gamma_1 \textit{def}_{t-1} + \theta \textit{d1980}_t + u_t
+$$
+```{r}
+mod3 <- update(mod2, . ~ . + L(inf) + L(def))
+summary(mod3)
+```
+De acuerdo con las estimaciones anteriores:
+
+- Los efectos de la inflación sobre el tipo de interés se reparten en el tiempo, siendo el multiplicador de corto plazo igual a 0.44 y el efecto al cabo de un año igual a 0.25.
+
+- El multiplicador de corto plazo del déficit público es prácticamente nulo y una elevación de 1 punto porcentual del déficit del año anterior elevaría el tipo de interés actual en 0.19 puntos porcentuales.
+
+
+### Largo plazo
+
+En el modelo de retardos distribuidos:
+$$
+\textit{i3}_t = \alpha + \beta_0 \textit{inf}_t + \beta_1 \textit{inf}_{t-1} + \gamma_0 \textit{def}_{t} + \gamma_1 \textit{def}_{t-1} + \theta \textit{d1980}_t + u_t,
+$$
+los multiplicadores dinámicos acumulados son:
+$$
+\begin{aligned}
+\beta_0^+ &= \beta_0  &\beta_1^+ &= \beta_0 + \beta_1 \\
+\gamma_0^+ &= \gamma_0  &\gamma_1^+ &= \gamma_0 + \gamma_1 
+\end{aligned}
+$$
+Invirtiendo las relaciones anteriores, obtenemos:
+$$
+\begin{aligned}
+\beta_0 &= \beta_0^+  &\beta_1 &= \beta_1^+ - \beta_0^+ \\
+\gamma_0 &= \gamma_0^+  &\gamma_1 &= \gamma_1^+ - \gamma_0^+ 
+\end{aligned}
+$$
+Sustituyendo en el modelo de regresión y operando:
+$$
+\textit{i3}_t = \alpha + \beta_0^+ \Delta\textit{inf}_t + \beta_1^+ \textit{inf}_{t-1} + \gamma_0^+ \Delta\textit{def}_{t} + \gamma_1^+ \textit{def}_{t-1} + \theta \textit{d1980}_t + u_t
+$$
+Podemos estimar directamente los multiplicadores dinámicos acumulados estimando los parámetros de esta última expresión: 
+```{r}
+mod4 <- dynlm(i3 ~ d(inf) + L(inf) + d(def) + L(def) + d1980, 
+              data = db, start = 1950)
+summary(mod4)
+```
+
+La estimación por MCO muestra que el déficit público no tiene un efecto  a largo plazo sobre el tipo de interés significativamente distinto de 0. En cambio el efecto de la inflación es positivo y significativo. El crecimiento de los precios no se trasladaría por completo al tipo de interés que solo subiría 0.69 puntos porcentuales por cada punto porcentual que aumentase la inflación. Esta estimación es similar a la que se obtuvo con el modelo estático `mod2`: $\hat{\beta} = \text{0.63}$.
+
+
+
