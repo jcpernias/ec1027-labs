@@ -1,0 +1,37 @@
+---
+title: "Inversión en vivienda"
+author: "EC1027 --- Econometría I"
+date: "Curso 2020-2021"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Planteamiento
+
+El conjunto de datos `hseinv` contiene observaciones anuales de inversión residencial y precios de la vivienda para Estados Unidos durante el período 1947-1988.  La variable $\textit{inv}_t$ es la inversión real en vivienda, en  millones de dólares; $\textit{pop}_t$ es el número de habitantes, en miles; y $\textit{price}_t$ es un índice del precio de las viviendas cuyo valor en 1988 es 1.
+
+1. Calcule la variable:
+   $$
+     \textit{invpc}_t = \textit{inv}_t / \textit{pop}_t
+   $$
+   ¿Qué unidades tiene $\textit{invpc}_t$? Cree nuevas variables para el logaritmo de $\textit{invpc}_t$ y de $\textit{price}_t$.
+   
+2. Estime los parámetros del modelo de regresión:
+   $$
+    \log (\textit{invpc}_t) = \beta_0 + \beta_1 \log (\textit{price}_t) + u_t
+   $$
+  Incluya ahora una tendencia lineal. ¿Se ven afectadas las estimaciones? ¿Por qué?
+
+3. Calcule el coeficiente de autocorrelación de primer orden de $\log(\textit{invpc}_t)$. Calcule también el coeficiente de autocorrelación incluyendo una tendencia lineal de $\log(\textit{invpc}_t)$. Haga lo mismo para $\textit{price}_t$. ¿Tiene una raíz unitaria alguna de las series analizadas ?
+
+4. Estime la ecuación:
+   $$
+    \log(\textit{invpc}_t) = \beta_0 + \beta_1\Delta \log(\textit{price}_t) + \beta_2 t + u_t
+   $$
+  Interprete el significado del coeficiente $\beta_1$ y determine si es significativamente distinto de 0.
+
+5. Elimine la tendencia lineal de $\log(\textit{invpc}_t)$ y use la variable resultante para reemplazar a la variable dependiente en la regresión del apartado anterior. ¿Qué le sucede al $R^2$?
+
+6. Utilice $\Delta \log(\textit{invpc}_t)$ como la variable dependiente de la regresión del apartado 4. ¿Como se ven modificadas las estimaciones?  ¿Sigue siendo significativa la tendencia lineal? ¿Por que sí o por qué no?

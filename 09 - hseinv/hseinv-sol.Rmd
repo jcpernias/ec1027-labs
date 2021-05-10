@@ -1,0 +1,113 @@
+---
+title: "Inversión en vivienda"
+author: "EC1027 --- Econometría I"
+date: "Curso 2020-2021"
+---
+
+
+```{r child="hseinv.Rmd"}
+```
+
+## Resolución
+
+
+### Datos
+
+Necesitaremos algunos paquetes de R:
+
+- `dynlm`: regresión con series temporales.
+```{r}
+library(dynlm)
+```
+
+- `ggplot2`: gráficos.
+```{r}
+library(ggplot2)
+```
+
+- `ec1027`: contiene la base de datos `hseinv` con la que trabajaremos en este laboratorio.
+```{r}
+library(ec1027)
+data(hseinv)
+```
+
+Con la función `zooreg` creamos a partir de `intdef` una base de datos de series temporales: `db`. Los datos en esta ocasión son anuales y la primera observación corresponde a 1947:
+```{r}
+db <- zooreg(hseinv, start = 1947, frequency = 1)
+```
+
+### Transformación de variables
+
+En primer lugar, añadimos a la base de datos la inversión en vivienda per cápita:
+```{r}
+db$invpc <- with(db, inv / pop)
+```
+La variable resultante se mide en miles de dólares por habitante.
+
+En segundo lugar, añadimos los logaritmos de la inversión per cápita y de los precios:
+```{r}
+db$linvpc <- log(db$invpc)
+db$lprice <- log(db$price)
+```
+
+
+### Regresión estática
+
+Para facilitar la comparación con las regresiones de los siguientes apartados, donde se pierde la primera observación al tomar diferencias, estimamos la regresión estática usando las observaciones a partir de 1948:
+```{r}
+mod1 <- dynlm(linvpc ~ lprice, data = db, start = 1948)
+summary(mod1)
+```
+La estimación del parámetro $\beta_1$ es positiva, lo que implicaría que se venderían más viviendas cuando el precio de las  mismas es más elevado. Incluimos una tendencia lineal:
+```{r}
+mod2 <- update(mod1, . ~ . + trend(db))
+summary(mod2)
+```
+Al incluir una tendencia la estimación de $\beta_2$ es negativa y no significativa. Probablemente las variables que estamos usando son altamente persistentes y los resultados de la primera regresión se debían a una *relación espuria*.
+
+### Raíces unitarias
+
+Estimamos una autorregresión de orden 1 para la inversión per cápita:
+```{r}
+ar_invpc <- dynlm(linvpc ~ L(linvpc), data = db, start = 1948)
+summary(ar_invpc)
+```
+El coeficiente de autocorrelación es `r round(coef(ar_invpc)[2], 2)`, muy inferior a 1, por lo que concluimos que la variable `linvpc` no presenta una raíz unitaria. Incluimos una tendencia lineal:
+```{r}
+summary(update(ar_invpc, . ~ . + trend(db)))
+```
+La regresión anterior no presenta fuerte evidencia de que la inversión per cápita presente un tendencia lineal. El parámetro de la tendencia es significativo para un nivel de significación del 10%, pero no para niveles de significación más exigentes como puede ser el 5%.
+
+Analizamos ahora los precios de la vivienda:
+```{r}
+ar_price <- dynlm(lprice ~ L(lprice), data = db, start = 1948)
+summary(ar_price)
+```
+En este caso el coeficiente de autocorrelación es muy cercano a la unidad. Añadimos una tendencia lineal para poder discriminar entre una tendencia lineal y una tendencia estocástica:
+```{r}
+summary(update(ar_price, . ~ . + trend(db)))
+```
+En este caso, la tendencia determinista no es significativa y la estimación del coeficiente de autocorrelación sigue siendo muy próxima a 1.
+
+En conclusión:
+
+- Hay cierta evidencia de una tendencia determinista en $\log(\textit{invpc}_t)$. 
+
+- Hay fuerte evidencia de una raíz unitaria en $\log(\textit{price}_t)$. 
+
+### Diferencias
+
+Tomamos diferencias del logaritmo de los precios para eliminar la raíz unitaria y añadimos una tendencia lineal para captar el posible comportamiento tendencial de la variable dependoente:
+```{r}
+mod3 <- dynlm(linvpc ~ d(lprice) + trend(db), data = db, start = 1948)
+summary(mod3)
+```
+Los resultados muestran que hay una relación positiva entre la inversión inmobiliaria y la *aceleración* de los precios de la vivienda. 
+
+Si diferenciamos también la variable dependiente, obtenemos:
+```{r}
+mod4 <- update(mod3, d(linvpc) ~ .)
+summary(mod4)
+```
+La tendencia lineal deja de ser significativa porque al tomar diferencias en la variable `linvpc` se elimina el crecimiento tendencial. En este caso no se observa una relación significativa entre el crecimiento de la inversión y el crecimiento de los precios de la vivienda.
+
