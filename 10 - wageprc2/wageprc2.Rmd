@@ -1,0 +1,170 @@
+---
+title: "Precios y salarios (II)"
+author: "EC1027 --- Econometría I"
+date: "Curso 2020-2021"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Datos
+
+Necesitaremos algunos paquetes de R:
+
+- `dynlm`: regresión con series temporales. Automáticamente carga el paquete `zoo` que proporciona funciones para trabajar con series temporales.
+```{r}
+library(dynlm)
+```
+
+- `ggplot2`: gráficos.
+```{r}
+library(ggplot2)
+```
+
+- `ec1027`: contiene la base de datos `wageprc` con la que trabajaremos en este laboratorio.
+```{r}
+library(ec1027)
+data(wageprc)
+```
+
+La base de datos contiene dos variables observadas mensualmente desde enero de 1964 hasta octubre de 1987:
+
+- `price`: índice de precios al consumo (1967 = 100).
+- `wage`: salario medio por hora (en dólares).
+
+Con la función `zooreg` creamos a partir de `wageprc` una base de datos de series temporales: `db`. Indicamos cuál es el periodo inicial de nuestros datos en el argumento `start`. Dado que nuestra muestra comienza en enero de 1964, escribimos `start = c(1964, 1)`. Finalmente, para declarar que nuestros datos son mensuales usamos el argumento `frequency = 12`:
+```{r}
+db <- zooreg(wageprc, start = c(1964, 1), frequency = 12)
+```
+
+Para simplificar el análisis posterior, transformaremos la frecuencia de los datos de mensual a trimestral: agregamos los meses correspondientes a un determinado trimestre usando la media aritmética: 
+```{r}
+dbq <- aggregate(db, as.yearqtr, mean)
+```
+
+Calculamos nuevas variables con las tasas de variación de precios y salarios, `gp` y `gw` respectivamente. Para ello calculamos la diferencia de los logaritmos de las variables en niveles:
+```{r}
+dbq$gp <- diff(log(dbq$price))
+dbq$gw <- diff(log(dbq$wage))
+```
+
+```{r}
+autoplot(dbq$gp)
+```
+```{r}
+autoplot(dbq$gw)
+```
+
+## Estacionariedad y dependencia débil
+
+```{r}
+mod_gp <- dynlm(gp ~ L(gp), data = dbq, start = c(1966, 1))
+summary(mod_gp)
+```
+
+
+```{r}
+mod_gw <- dynlm(gw ~ L(gw), data = dbq, start = c(1966, 1))
+summary(mod_gw)
+```
+
+## Regresión estática 
+
+Regresión del crecimiento de los precios sobre el crecimiento de los salarios usando la muestra que comienza el primer timestre de 1966:
+```{r}
+mod1 <- dynlm(gp ~ gw, data = dbq, start = c(1966, 1))
+summary(mod1)
+```
+
+
+## Contrastes de autocorrelación
+
+```{r}
+dbq$uhat_1 <- resid(mod1)
+autoplot(dbq$uhat_1)
+```
+
+
+```{r}
+ar4_mod1 <- update(mod1, uhat_1 ~ . + L(uhat_1, 1:4))
+summary(ar4_mod1)
+drop_test(ar4_mod1, ~ L(uhat_1, 1:4))
+```
+
+```{r}
+ar1_mod1 <- update(mod1, uhat_1 ~ . + L(uhat_1))
+summary(ar1_mod1)
+drop_test(ar1_mod1, ~ L(uhat_1))
+```
+
+## Inferencia robusta a autocorrelación
+
+```{r}
+coef_table(mod1, vce = "NW")
+```
+
+## Especificación dinámica
+
+```{r}
+mod2 <- dynlm(gp ~ L(gp, 1:4) + gw + L(gw, 1:4), data = dbq, start = c(1966, 1))
+summary(mod2)
+```
+
+
+```{r}
+dbq$uhat_2 <- resid(mod2)
+ar4_mod2 <- update(mod2, uhat_2 ~ . + L(uhat_2, 1:4))
+drop_test(ar4_mod2, ~ L(uhat_2, 1:4))
+```
+
+```{r}
+ar1_mod2 <- update(mod2, uhat_2 ~ . + L(uhat_2))
+drop_test(ar1_mod2, ~ L(uhat_2))
+```
+
+
+```{r}
+mod3 <- dynlm(gp ~ L(gp, 1:4) + gw + L(gw, 1:2), data = dbq, start = c(1966, 1))
+summary(mod3)
+```
+
+```{r}
+coef3 <- coef(mod3)
+ahat <- coef3[1]
+fhat <- coef3[2:5]
+bhat <- coef3[6:8]
+```
+
+```{r}
+sum(bhat)/(1 - sum(fhat))
+```
+
+```{r}
+N <- 21
+mu <- rep(0, N)
+mu[1] <- bhat[1]
+mu[2] <- bhat[2] + fhat[1] * mu[1]
+mu[3] <- bhat[3] + fhat[1] * mu[2] + fhat[2] * mu[1]
+mu[4] <- fhat[1] * mu[3] + fhat[2] * mu[2] + fhat[3] * mu[1]
+mu[5] <- fhat[1] * mu[4] + fhat[2] * mu[3] + fhat[3] * mu[2] + fhat[4] * mu[1]
+for(i in 6:N) {
+  mu[i] <- fhat[1] * mu[i - 1] + fhat[2] * mu[i - 2] + 
+    fhat[3] * mu[i - 3] + fhat[4] * mu[i - 4]
+}
+```
+
+```{r}
+Index <- 0:(N - 1)
+qplot(x = Index, y = mu, geom = "line") +
+    scale_x_continuous("Trimestres", breaks = (0:5)*4)
+```
+
+
+```{r}
+theta <- cumsum(mu)
+qplot(x = Index, y = theta, geom = "line") + 
+  scale_x_continuous("Trimestres", breaks = (0:5)*4) +
+  scale_y_continuous(breaks = seq(0, 1.2, by = 0.2), limits = c(0, 1.2))
+```
+
