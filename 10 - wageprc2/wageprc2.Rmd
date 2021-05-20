@@ -40,7 +40,7 @@ db <- zooreg(wageprc, start = c(1964, 1), frequency = 12)
 
 Para simplificar el análisis posterior, transformaremos la frecuencia de los datos de mensual a trimestral: agregamos los meses correspondientes a un determinado trimestre usando la media aritmética: 
 ```{r}
-dbq <- aggregate(db, as.yearqtr, mean)
+dbq <- aggregate(window(db, end = "sep 1987"), as.yearqtr, mean)
 ```
 
 Calculamos nuevas variables con las tasas de variación de precios y salarios, `gp` y `gw` respectivamente. Para ello calculamos la diferencia de los logaritmos de las variables en niveles:
@@ -49,42 +49,83 @@ dbq$gp <- diff(log(dbq$price))
 dbq$gw <- diff(log(dbq$wage))
 ```
 
+## Estacionariedad y dependencia débil
+
+Por un lado, examinamos la evolución de las variables con gráficos:
+
+- Crecimiento de los precios:
 ```{r}
 autoplot(dbq$gp)
 ```
+
+
+- Crecimiento de los salarios:
 ```{r}
 autoplot(dbq$gw)
 ```
 
-## Estacionariedad y dependencia débil
+No se aprecian fuertes variaciones estacionales ni un comportamiento tendencial sostenido durante el periodo muestral. 
 
+Examinamos la posibilidad de tendencias estocásticas estimando autorregresiones:
+
+- Crecimiento de los precios:
 ```{r}
-mod_gp <- dynlm(gp ~ L(gp), data = dbq, start = c(1966, 1))
+mod_gp <- dynlm(gp ~ L(gp), data = dbq, start = "1966 Q1")
 summary(mod_gp)
 ```
 
-
+- Crecimiento de los salarios:
 ```{r}
-mod_gw <- dynlm(gw ~ L(gw), data = dbq, start = c(1966, 1))
+mod_gw <- dynlm(gw ~ L(gw), data = dbq, start = "1966 Q1")
 summary(mod_gw)
 ```
+
+Sólo en el caso de los precios hay evidencia débil de una raíz unitaria. Continuaremos este ejercicio suponiendo que las dos series son estacionarias y débilmente dependientes.
 
 ## Regresión estática 
 
 Regresión del crecimiento de los precios sobre el crecimiento de los salarios usando la muestra que comienza el primer timestre de 1966:
 ```{r}
-mod1 <- dynlm(gp ~ gw, data = dbq, start = c(1966, 1))
+mod1 <- dynlm(gp ~ gw, data = dbq, start = "1966 Q1")
 summary(mod1)
 ```
 
 
 ## Contrastes de autocorrelación
 
+Obtenemos los residuos de la regresión estática:
 ```{r}
 dbq$uhat_1 <- resid(mod1)
 autoplot(dbq$uhat_1)
 ```
 
+Para contrastar la presencia de autocorrelación contrastamos la significación del parámetro $\rho$ usando la regresión auxiliar:
+$$
+  \hat{u}_t = 
+  \gamma_0 + 
+  \gamma_1 gw_t +
+  \rho \hat{u}_{t-1} + 
+  \text{residuo}_t
+$$
+
+```{r}
+ar1_mod1 <- update(mod1, uhat_1 ~ . + L(uhat_1))
+summary(ar1_mod1)
+drop_test(ar1_mod1, ~ L(uhat_1))
+```
+El contraste rechaza claramente la hipótesis nula de no autocorrelación.
+
+Podemos usar un procedimiento análogo para contrastar patrones de autocorrelación más complejos. Por ejemplo, para contrastar la presencia de autocorrelación de orden 4 contrastamos la significación conjunta de los parámetros $\rho_1$, $\rho_2$, $\rho_3$ y $\rho_4$ en la regresión auxiliar: 
+$$
+  \hat{u}_t = 
+  \gamma_0 + 
+  \gamma_1 gw_t +
+  \rho_1 \hat{u}_{t-1} + 
+  \rho_2 \hat{u}_{t-2} + 
+  \rho_3 \hat{u}_{t-3} + 
+  \rho_4 \hat{u}_{t-4} + 
+  \text{residuo}_t
+$$
 
 ```{r}
 ar4_mod1 <- update(mod1, uhat_1 ~ . + L(uhat_1, 1:4))
@@ -92,11 +133,7 @@ summary(ar4_mod1)
 drop_test(ar4_mod1, ~ L(uhat_1, 1:4))
 ```
 
-```{r}
-ar1_mod1 <- update(mod1, uhat_1 ~ . + L(uhat_1))
-summary(ar1_mod1)
-drop_test(ar1_mod1, ~ L(uhat_1))
-```
+De nuevo, encontramos fuerte evidencia en contra de la hipótesis de no autocorrelación.
 
 ## Inferencia robusta a autocorrelación
 
@@ -104,42 +141,94 @@ drop_test(ar1_mod1, ~ L(uhat_1))
 coef_table(mod1, vce = "NW")
 ```
 
+En este caso, la autocorrelación apenas afecta a los errores típicos de las estimaciones:
+```{r echo=FALSE}
+library(modelsummary)
+serr <- list(se(mod1), se(mod1, vce = "NW"))
+modelsummary(list("OLS" = mod1, "NW" = mod1), 
+             estimate = "{estimate} ({std.error}){stars}", 
+             vcov = serr,
+             fmt = 4,
+             statistic = NULL,
+             gof_omit = 'AIC|BIC|Log\\.Lik\\.')
+```
+
 ## Especificación dinámica
 
+La autocorrelación puede ser una manifestación de una incorrecta especificación dinámica. Ampliamos el modelo estático de la sección anterior añadiendo retardos de la variable dependiente y de la variable explicativa:
+$$
+\begin{multline}
+  gp_t = 
+  \alpha + 
+  \phi_1 gp_{t-1} + 
+  \phi_2 gp_{t-2} + 
+  \phi_3 gp_{t-3} + 
+  \phi_4 gp_{t-4} \\ + 
+  \beta_0 gw_{t} + 
+  \beta_1 gw_{t-1} + 
+  \beta_2 gw_{t-2} +
+  \beta_3 gw_{t-3} +
+  \beta_4 gw_{t-4} +
+  u_t
+\end{multline}
+$$
+
 ```{r}
-mod2 <- dynlm(gp ~ L(gp, 1:4) + gw + L(gw, 1:4), data = dbq, start = c(1966, 1))
+mod2 <- dynlm(gp ~ L(gp, 1:4) + gw + L(gw, 1:4), data = dbq, start = "1966 Q1")
 summary(mod2)
 ```
 
+Al incluir retardos de la variable dependiente en nuestra especificación, las evidencias de autocorrelación desaparecen:
 
+- Contraste de autocorrelación de orden 1:
 ```{r}
 dbq$uhat_2 <- resid(mod2)
 ar4_mod2 <- update(mod2, uhat_2 ~ . + L(uhat_2, 1:4))
 drop_test(ar4_mod2, ~ L(uhat_2, 1:4))
 ```
 
+- Contraste de autocorrelación de orden 4:
 ```{r}
 ar1_mod2 <- update(mod2, uhat_2 ~ . + L(uhat_2))
 drop_test(ar1_mod2, ~ L(uhat_2))
 ```
 
+## Multiplicadores dinámicos
+
+Simplificamos el modelo de la sección anterior eliminando los dos últimos restardos de `gw`:
+$$
+  gp_t = 
+  \alpha + 
+  \phi_1 gp_{t-1} + 
+  \phi_2 gp_{t-2} + 
+  \phi_3 gp_{t-3} + 
+  \phi_4 gp_{t-4} + 
+  \beta_0 gw_{t} + 
+  \beta_1 gw_{t-1} + 
+  \beta_2 gw_{t-2} +
+  u_t
+$$
 
 ```{r}
-mod3 <- dynlm(gp ~ L(gp, 1:4) + gw + L(gw, 1:2), data = dbq, start = c(1966, 1))
+mod3 <- dynlm(gp ~ L(gp, 1:4) + gw + L(gw, 1:2), data = dbq, start = "1966 Q1")
 summary(mod3)
-```
 
-```{r}
 coef3 <- coef(mod3)
 ahat <- coef3[1]
 fhat <- coef3[2:5]
 bhat <- coef3[6:8]
 ```
 
+La estimación del multiplicador de impacto,$\hat{\beta}_0$, es `r round(bhat[1], 3)`. El multiplicador de largo plazo en este modelo es:
+$$
+  \theta = \frac{\sum \beta_j}{1 - \sum \phi_j}
+$$
+Sustituyendo en esta expresión las estimaciones de nuestro modelo dinámico, obtenemos una estimación del multiplicador a largo plazo:
 ```{r}
 sum(bhat)/(1 - sum(fhat))
 ```
 
+Para calcular los multiplicadores intermedios simulamos la respuesta de los precios a un cambio unitario de los salarios en un periodo:
 ```{r}
 N <- 21
 mu <- rep(0, N)
@@ -148,19 +237,20 @@ mu[2] <- bhat[2] + fhat[1] * mu[1]
 mu[3] <- bhat[3] + fhat[1] * mu[2] + fhat[2] * mu[1]
 mu[4] <- fhat[1] * mu[3] + fhat[2] * mu[2] + fhat[3] * mu[1]
 mu[5] <- fhat[1] * mu[4] + fhat[2] * mu[3] + fhat[3] * mu[2] + fhat[4] * mu[1]
-for(i in 6:N) {
+for (i in 6:N) {
   mu[i] <- fhat[1] * mu[i - 1] + fhat[2] * mu[i - 2] + 
     fhat[3] * mu[i - 3] + fhat[4] * mu[i - 4]
 }
 ```
 
+Multiplicadores dinámicos:
 ```{r}
 Index <- 0:(N - 1)
 qplot(x = Index, y = mu, geom = "line") +
     scale_x_continuous("Trimestres", breaks = (0:5)*4)
 ```
 
-
+Multiplicadores acumulados:
 ```{r}
 theta <- cumsum(mu)
 qplot(x = Index, y = theta, geom = "line") + 
