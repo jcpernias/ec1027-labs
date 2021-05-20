@@ -183,14 +183,14 @@ Al incluir retardos de la variable dependiente en nuestra especificación, las e
 - Contraste de autocorrelación de orden 1:
 ```{r}
 dbq$uhat_2 <- resid(mod2)
-ar4_mod2 <- update(mod2, uhat_2 ~ . + L(uhat_2, 1:4))
-drop_test(ar4_mod2, ~ L(uhat_2, 1:4))
+ar1_mod2 <- update(mod2, uhat_2 ~ . + L(uhat_2))
+drop_test(ar1_mod2, ~ L(uhat_2))
 ```
 
 - Contraste de autocorrelación de orden 4:
 ```{r}
-ar1_mod2 <- update(mod2, uhat_2 ~ . + L(uhat_2))
-drop_test(ar1_mod2, ~ L(uhat_2))
+ar4_mod2 <- update(mod2, uhat_2 ~ . + L(uhat_2, 1:4))
+drop_test(ar4_mod2, ~ L(uhat_2, 1:4))
 ```
 
 ## Multiplicadores dinámicos
